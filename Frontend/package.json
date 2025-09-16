@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "both": "concurrently \"npm run dev\" \"nodemon backend/server.js\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -12,6 +13,7 @@
   "dependencies": {
     "@tailwindcss/cli": "^4.1.13",
     "@tailwindcss/vite": "^4.1.13",
+    "concurrently": "^9.2.1",
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.2",
     "jspdf-autotable": "^5.0.2",
