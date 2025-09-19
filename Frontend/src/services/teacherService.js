@@ -1,13 +1,12 @@
 import { api } from '../utils/api';
-import { API_ENDPOINTS, MOCK_CREDENTIALS, ATTENDANCE_STATUS } from '../utils/constants';
 
 export const teacherService = {
   // Mock login
-  login: async (credentials) => {
+  login: async (credentials, mockCredentials) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (credentials.email === MOCK_CREDENTIALS.TEACHER.email && 
-        credentials.password === MOCK_CREDENTIALS.TEACHER.password) {
+    if (credentials.email === mockCredentials.TEACHER.email && 
+        credentials.password === mockCredentials.TEACHER.password) {
       return {
         success: true,
         user: {
@@ -64,17 +63,17 @@ export const teacherService = {
   },
 
   // Get attendance for a specific date
-  getAttendance: async (date, subject, filters = {}) => {
+  getAttendance: async (date, subject, filters = {}, attendanceStatus) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Mock attendance data
     const mockAttendance = {
-      1: ATTENDANCE_STATUS.PRESENT,
-      2: ATTENDANCE_STATUS.ABSENT,
-      3: ATTENDANCE_STATUS.PRESENT,
-      4: ATTENDANCE_STATUS.LATE,
-      5: ATTENDANCE_STATUS.PRESENT,
-      6: ATTENDANCE_STATUS.PRESENT
+      1: attendanceStatus.PRESENT,
+      2: attendanceStatus.ABSENT,
+      3: attendanceStatus.PRESENT,
+      4: attendanceStatus.LATE,
+      5: attendanceStatus.PRESENT,
+      6: attendanceStatus.PRESENT
     };
     
     return mockAttendance;

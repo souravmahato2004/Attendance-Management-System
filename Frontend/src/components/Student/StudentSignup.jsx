@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, User, Mail, Lock, Hash, GraduationCap, Eye, EyeOff, Calendar } from 'lucide-react';
-import { PROGRAMS, SEMESTERS, PROGRAM_DEPT_SEM_SUBJECTS, DEPARTMENTS } from '../../utils/constants';
+import { useApp } from '../../contexts/AppContext';
 import { studentService } from '../../services/studentService';
 import { validateEmail, validatePassword } from '../../utils/helpers';
 import { useToast } from '../../contexts/ToastContext';
 
 const StudentSignup = () => {
+  const { programs, semesters, departments, programDeptSemSubjects } = useApp();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -92,7 +93,7 @@ const StudentSignup = () => {
 
     setLoading(true);
     try {
-      await studentService.signup(formData);
+      await studentService.signup(formData, programDeptSemSubjects);
       success('Account created successfully! Please sign in.');
       navigate('/student/login');
     } catch (err) {
@@ -149,7 +150,7 @@ const StudentSignup = () => {
                 <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <select id="program" name="program" required className={`${baseInputStyles} ${fieldErrors.program ? errorInputStyles : ''}`} value={formData.program} onChange={handleChange} onBlur={handleBlur} disabled={loading}>
                   <option value="">Select Program</option>
-                  {PROGRAMS.map(p => <option key={p} value={p}>{p}</option>)}
+                  {programs.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
               {fieldErrors.program && <p className="mt-1 text-xs text-red-600">{fieldErrors.program}</p>}
@@ -161,7 +162,7 @@ const StudentSignup = () => {
                 <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <select id="department" name="department" required className={`${baseInputStyles} ${fieldErrors.department ? errorInputStyles : ''}`} value={formData.department} onChange={handleChange} onBlur={handleBlur} disabled={loading}>
                   <option value="">Select Department</option>
-                  {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               {fieldErrors.department && <p className="mt-1 text-xs text-red-600">{fieldErrors.department}</p>}
@@ -173,7 +174,7 @@ const StudentSignup = () => {
                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <select id="semester" name="semester" required className={`${baseInputStyles} ${fieldErrors.semester ? errorInputStyles : ''}`} value={formData.semester} onChange={handleChange} onBlur={handleBlur} disabled={loading}>
                   <option value="">Select Semester</option>
-                  {SEMESTERS.map(sem => <option key={sem} value={sem}>{sem}</option>)}
+                  {semesters.map(sem => <option key={sem} value={sem}>{sem}</option>)}
                 </select>
               </div>
               {fieldErrors.semester && <p className="mt-1 text-xs text-red-600">{fieldErrors.semester}</p>}
@@ -184,7 +185,7 @@ const StudentSignup = () => {
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <p className="text-sm text-purple-700 font-medium mb-2">Subjects assigned for {formData.program} - {formData.department} - {formData.semester}:</p>
                 <div className="flex flex-wrap gap-2">
-                  {(PROGRAM_DEPT_SEM_SUBJECTS[formData.program]?.[formData.department]?.[formData.semester] || []).map(sub => (
+                  {(programDeptSemSubjects[formData.program]?.[formData.department]?.[formData.semester] || []).map(sub => (
                     <span key={sub} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">{sub}</span>
                   ))}
                 </div>

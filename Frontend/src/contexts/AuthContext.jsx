@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useConfig } from './ConfigContext';
 
 const AuthContext = createContext();
 
@@ -11,6 +12,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const { mockCredentials } = useConfig();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,12 +45,19 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const validateCredentials = (email, password, role) => {
+    const credentials = mockCredentials[role.toUpperCase()];
+    return credentials && credentials.email === email && credentials.password === password;
+  };
+
   const value = {
     user,
     login,
     logout,
     updateUser,
-    loading
+    loading,
+    validateCredentials,
+    mockCredentials
   };
 
   return (

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Save, Filter, Download, RefreshCw, UserCheck, Users } from 'lucide-react';
-import { ATTENDANCE_STATUS, PROGRAMS, DEPARTMENTS, SEMESTERS } from '../../utils/constants';
+import { useApp } from '../../contexts/AppContext';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AttendanceManager = ({ onStatsUpdate }) => {
   const { user } = useAuth();
+  const { programs, departments, semesters, attendanceStatus } = useApp();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -60,7 +61,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     if (students.length === 0) return;
 
     try {
-      const data = await teacherService.getAttendance(selectedDate, selectedSubject, { program, department, semester });
+      const data = await teacherService.getAttendance(selectedDate, selectedSubject, { program, department, semester }, attendanceStatus);
       setAttendance(data);
       updateStats(data);
     } catch (error) {
@@ -68,7 +69,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
       // Set default attendance for new dates
       const defaultAttendance = {};
       students.forEach(student => {
-        defaultAttendance[student.id] = ATTENDANCE_STATUS.PRESENT;
+        defaultAttendance[student.id] = attendanceStatus.PRESENT;
       });
       setAttendance(defaultAttendance);
       updateStats(defaultAttendance);
@@ -76,9 +77,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   };
 
   const updateStats = (attendanceData) => {
-    const present = Object.values(attendanceData).filter(status => status === ATTENDANCE_STATUS.PRESENT).length;
-    const absent = Object.values(attendanceData).filter(status => status === ATTENDANCE_STATUS.ABSENT).length;
-    const late = Object.values(attendanceData).filter(status => status === ATTENDANCE_STATUS.LATE).length;
+    const present = Object.values(attendanceData).filter(status => status === attendanceStatus.PRESENT).length;
+    const absent = Object.values(attendanceData).filter(status => status === attendanceStatus.ABSENT).length;
+    const late = Object.values(attendanceData).filter(status => status === attendanceStatus.LATE).length;
     
     const stats = {
       totalStudents: students.length,
@@ -117,7 +118,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   const markAllPresent = () => {
     const allPresent = {};
     students.forEach(student => {
-      allPresent[student.id] = ATTENDANCE_STATUS.PRESENT;
+      allPresent[student.id] = attendanceStatus.PRESENT;
     });
     setAttendance(allPresent);
     updateStats(allPresent);
@@ -125,11 +126,11 @@ const AttendanceManager = ({ onStatsUpdate }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case ATTENDANCE_STATUS.PRESENT:
+      case attendanceStatus.PRESENT:
         return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
-      case ATTENDANCE_STATUS.ABSENT:
+      case attendanceStatus.ABSENT:
         return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200';
-      case ATTENDANCE_STATUS.LATE:
+      case attendanceStatus.LATE:
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
@@ -137,9 +138,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   };
 
   const getAttendanceStats = () => {
-    const present = Object.values(attendance).filter(status => status === ATTENDANCE_STATUS.PRESENT).length;
-    const absent = Object.values(attendance).filter(status => status === ATTENDANCE_STATUS.ABSENT).length;
-    const late = Object.values(attendance).filter(status => status === ATTENDANCE_STATUS.LATE).length;
+    const present = Object.values(attendance).filter(status => status === attendanceStatus.PRESENT).length;
+    const absent = Object.values(attendance).filter(status => status === attendanceStatus.ABSENT).length;
+    const late = Object.values(attendance).filter(status => status === attendanceStatus.LATE).length;
     const total = students.length;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
@@ -171,7 +172,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
               onChange={(e) => setProgram(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              {PROGRAMS.map(p => (
+              {programs.map(p => (
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
@@ -184,7 +185,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
               onChange={(e) => setDepartment(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              {DEPARTMENTS.map(d => (
+              {departments.map(d => (
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>
@@ -197,7 +198,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
               onChange={(e) => setSemester(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
-              {SEMESTERS.map(sem => (
+              {semesters.map(sem => (
                 <option key={sem} value={sem}>{sem}</option>
               ))}
             </select>
@@ -342,7 +343,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   <div className="flex justify-center space-x-2">
-                    {Object.values(ATTENDANCE_STATUS).map(status => (
+                    {Object.values(attendanceStatus).map(status => (
                       <label
                         key={status}
                         className={`inline-flex items-center px-3 py-2 rounded-full text-xs font-medium border cursor-pointer transition-all duration-200 ${

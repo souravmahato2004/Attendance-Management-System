@@ -1,5 +1,6 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider } from './contexts/ConfigContext';
+import { AppProvider } from './contexts/AppContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import AdminLogin from './components/Admin/AdminLogin';
@@ -15,53 +16,57 @@ import TestLogin from './components/TestLogin';
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Routes>
-              <Route path="/" element={<Navigate to="/student/login" />} />
-              <Route path="/test" element={<TestLogin />} />
-              
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route 
-                path="/admin/dashboard" 
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Teacher Routes */}
-              <Route path="/teacher/login" element={<TeacherLogin />} />
-              <Route 
-                path="/teacher/dashboard" 
-                element={
-                  <ProtectedRoute requiredRole="teacher">
-                    <TeacherDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Student Routes */}
-              <Route path="/student/login" element={<StudentLogin />} />
-              <Route path="/student/signup" element={<StudentSignup />} />
-              <Route 
-                path="/student/dashboard" 
-                element={
-                  <ProtectedRoute requiredRole="student">
-                    <StudentDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-            </Routes>
-            <ToastContainer />
-          </div>
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
+    <ConfigProvider>
+      <AppProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <Router>
+              <div className="min-h-screen bg-gray-50">
+                <Routes>
+                  <Route path="/" element={<Navigate to="/student/login" />} />
+                  <Route path="/test" element={<TestLogin />} />
+                  
+                  {/* Admin Routes */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route 
+                    path="/admin/dashboard" 
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  {/* Teacher Routes */}
+                  <Route path="/teacher/login" element={<TeacherLogin />} />
+                  <Route 
+                    path="/teacher/dashboard" 
+                    element={
+                      <ProtectedRoute requiredRole="teacher">
+                        <TeacherDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  {/* Student Routes */}
+                  <Route path="/student/login" element={<StudentLogin />} />
+                  <Route path="/student/signup" element={<StudentSignup />} />
+                  <Route 
+                    path="/student/dashboard" 
+                    element={
+                      <ProtectedRoute requiredRole="student">
+                        <StudentDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                </Routes>
+                <ToastContainer />
+              </div>
+            </Router>
+          </ToastProvider>
+        </AuthProvider>
+      </AppProvider>
+    </ConfigProvider>
   );
 }
 

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, BookOpen, Save, X, Search } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const SubjectManagement = () => {
+  const { programs: contextPrograms, semesters: contextSemesters, departments: contextDepartments, subjects: allSubjects, getSubjectsForProgram, addSubjectToProgram, removeSubjectFromProgram } = useApp();
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [departments] = useState(['CSE', 'ECE', 'Mechanical', 'Civil', 'EEE', 'IT', 'Chemical', 'Aerospace']);
-  const [allSubjects, setAllSubjects] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('');
@@ -31,13 +32,12 @@ const SubjectManagement = () => {
     try {
       setLoading(true);
       const [programsData, subjectsData] = await Promise.all([
-        adminService.getProgramsAndSemesters(),
-        adminService.getAllSubjects()
+        adminService.getProgramsAndSemesters(contextPrograms, contextSemesters),
+        adminService.getAllSubjects(allSubjects)
       ]);
       
       setPrograms(programsData.programs);
       setSemesters(programsData.semesters);
-      setAllSubjects(subjectsData);
     } catch (error) {
       showToast('Failed to load data', 'error');
     } finally {
@@ -47,7 +47,7 @@ const SubjectManagement = () => {
 
   const loadSubjectsForProgram = async () => {
     try {
-      const subjects = await adminService.getSubjectsForProgram(selectedProgram, selectedSemester, selectedDepartment);
+      const subjects = getSubjectsForProgram(selectedProgram, selectedDepartment, selectedSemester);
       setCurrentSubjects(subjects);
     } catch (error) {
       showToast('Failed to load subjects', 'error');
@@ -67,6 +67,7 @@ const SubjectManagement = () => {
 
     try {
       await adminService.addSubjectToProgram(selectedProgram, selectedSemester, newSubject, selectedDepartment);
+      addSubjectToProgram(selectedProgram, selectedDepartment, selectedSemester, newSubject);
       setNewSubject('');
       loadSubjectsForProgram();
       showToast('Subject added successfully', 'success');
@@ -79,6 +80,7 @@ const SubjectManagement = () => {
     if (window.confirm(`Are you sure you want to remove "${subject}" from this program-department-semester?`)) {
       try {
         await adminService.removeSubjectFromProgram(selectedProgram, selectedSemester, subject, selectedDepartment);
+        removeSubjectFromProgram(selectedProgram, selectedDepartment, selectedSemester, subject);
         loadSubjectsForProgram();
         showToast('Subject removed successfully', 'success');
       } catch (error) {

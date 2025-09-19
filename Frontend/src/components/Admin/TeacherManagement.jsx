@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, User, Mail, Phone, MapPin, BookOpen, Save, X } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const TeacherManagement = () => {
+  const { subjects: availableSubjects } = useApp();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
-  const [availableSubjects, setAvailableSubjects] = useState([]);
   const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -21,7 +22,6 @@ const TeacherManagement = () => {
 
   useEffect(() => {
     loadTeachers();
-    loadSubjects();
   }, []);
 
   const loadTeachers = async () => {
@@ -33,15 +33,6 @@ const TeacherManagement = () => {
       showToast('Failed to load teachers', 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadSubjects = async () => {
-    try {
-      const subjects = await adminService.getAllSubjects();
-      setAvailableSubjects(subjects);
-    } catch (error) {
-      console.error('Failed to load subjects:', error);
     }
   };
 

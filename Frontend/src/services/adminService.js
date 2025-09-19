@@ -1,15 +1,15 @@
 import { api } from '../utils/api';
-import { API_ENDPOINTS, MOCK_CREDENTIALS, PROGRAM_DEPT_SEM_SUBJECTS } from '../utils/constants';
 import { generatePassword, downloadPDF, formatDate } from '../utils/helpers';
 
+// This service will be updated to use context data when called from components
 export const adminService = {
   // Mock login - replace with real API call
-  login: async (credentials) => {
+  login: async (credentials, mockCredentials) => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (credentials.email === MOCK_CREDENTIALS.ADMIN.email && 
-        credentials.password === MOCK_CREDENTIALS.ADMIN.password) {
+    if (credentials.email === mockCredentials.ADMIN.email && 
+        credentials.password === mockCredentials.ADMIN.password) {
       return {
         success: true,
         user: {
@@ -158,14 +158,13 @@ export const adminService = {
   },
 
   // Get all subjects for a program, department and semester
-  getSubjectsForProgram: async (program, semester, department) => {
+  getSubjectsForProgram: async (program, semester, department, programDeptSemSubjects) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Check if department-specific subjects exist, otherwise fall back to program-semester
-    const deptSubjects = PROGRAM_DEPT_SEM_SUBJECTS?.[program]?.[department]?.[semester];
-    const programSubjects = PROGRAM_DEPT_SEM_SUBJECTS[program]?.[semester] || [];
+    const deptSubjects = programDeptSemSubjects?.[program]?.[department]?.[semester];
     
-    return deptSubjects || programSubjects;
+    return deptSubjects || [];
   },
 
   // Add subject to program-department-semester
@@ -173,72 +172,22 @@ export const adminService = {
     await new Promise(resolve => setTimeout(resolve, 800));
     
     // In real implementation, this would update the database
-    // For now, we'll add to the department-specific structure if it exists
-    if (department && PROGRAM_DEPT_SEM_SUBJECTS?.[program]?.[department]) {
-      if (!PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester]) {
-        PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester] = [];
-      }
-      if (!PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester].includes(subject)) {
-        PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester].push(subject);
-      }
-      return {
-        success: true,
-        message: 'Subject added successfully',
-        subjects: PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester]
-      };
-    } else {
-      // Fallback to program-semester structure
-      if (!PROGRAM_SEMESTER_SUBJECTS[program]) {
-        PROGRAM_SEMESTER_SUBJECTS[program] = {};
-      }
-      if (!PROGRAM_SEMESTER_SUBJECTS[program][semester]) {
-        PROGRAM_SEMESTER_SUBJECTS[program][semester] = [];
-      }
-      
-      if (!PROGRAM_SEMESTER_SUBJECTS[program][semester].includes(subject)) {
-        PROGRAM_SEMESTER_SUBJECTS[program][semester].push(subject);
-      }
-      
-      return {
-        success: true,
-        message: 'Subject added successfully',
-        subjects: PROGRAM_SEMESTER_SUBJECTS[program][semester]
-      };
-    }
+    return {
+      success: true,
+      message: 'Subject added successfully',
+      subjects: [subject] // This will be updated by the context
+    };
   },
 
   // Remove subject from program-department-semester
   removeSubjectFromProgram: async (program, semester, subject, department) => {
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Try department-specific structure first
-    if (department && PROGRAM_DEPT_SEM_SUBJECTS?.[program]?.[department]?.[semester]) {
-      const index = PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester].indexOf(subject);
-      if (index > -1) {
-        PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester].splice(index, 1);
-      }
-      return {
-        success: true,
-        message: 'Subject removed successfully',
-        subjects: PROGRAM_DEPT_SEM_SUBJECTS[program][department][semester] || []
-      };
-    } else if (PROGRAM_SEMESTER_SUBJECTS[program]?.[semester]) {
-      // Fallback to program-semester structure
-      const index = PROGRAM_SEMESTER_SUBJECTS[program][semester].indexOf(subject);
-      if (index > -1) {
-        PROGRAM_SEMESTER_SUBJECTS[program][semester].splice(index, 1);
-      }
-      return {
-        success: true,
-        message: 'Subject removed successfully',
-        subjects: PROGRAM_SEMESTER_SUBJECTS[program][semester] || []
-      };
-    }
-    
+    // In real implementation, this would update the database
     return {
       success: true,
       message: 'Subject removed successfully',
-      subjects: []
+      subjects: [] // This will be updated by the context
     };
   },
 
@@ -304,26 +253,19 @@ export const adminService = {
   },
 
   // Get all programs and semesters
-  getProgramsAndSemesters: async () => {
+  getProgramsAndSemesters: async (programs, semesters) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     return {
-      programs: Object.keys(PROGRAM_SEMESTER_SUBJECTS),
-      semesters: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8']
+      programs: programs,
+      semesters: semesters
     };
   },
 
   // Get all subjects
-  getAllSubjects: async () => {
+  getAllSubjects: async (subjects) => {
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    const allSubjects = new Set();
-    Object.values(PROGRAM_SEMESTER_SUBJECTS).forEach(program => {
-      Object.values(program).forEach(semester => {
-        semester.forEach(subject => allSubjects.add(subject));
-      });
-    });
-    
-    return Array.from(allSubjects);
+    return subjects;
   }
 };

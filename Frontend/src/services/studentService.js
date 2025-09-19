@@ -1,14 +1,13 @@
 import { api } from '../utils/api';
-import { API_ENDPOINTS, MOCK_CREDENTIALS, ATTENDANCE_STATUS, PROGRAM_DEPT_SEM_SUBJECTS } from '../utils/constants';
 import { downloadPDF, formatDate } from '../utils/helpers';
 
 export const studentService = {
   // Mock login
-  login: async (credentials) => {
+  login: async (credentials, mockCredentials) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (credentials.email === MOCK_CREDENTIALS.STUDENT.email && 
-        credentials.password === MOCK_CREDENTIALS.STUDENT.password) {
+    if (credentials.email === mockCredentials.STUDENT.email && 
+        credentials.password === mockCredentials.STUDENT.password) {
       return {
         success: true,
         user: {
@@ -29,20 +28,17 @@ export const studentService = {
   },
 
   // Student signup
-  signup: async (studentData) => {
+  signup: async (studentData, programDeptSemSubjects) => {
     await new Promise(resolve => setTimeout(resolve, 1200));
     
     // Mock validation - check if email already exists
-    if (studentData.email === MOCK_CREDENTIALS.STUDENT.email) {
+    if (studentData.email === 'alice@student.com') {
       throw new Error('Email already exists');
     }
     
     // Auto-assign subjects based on program + department + semester if provided (department overrides), fallback to program-semester
-    const deptSubjects = studentData.program && studentData.department && studentData.semester && PROGRAM_DEPT_SEM_SUBJECTS[studentData.program]?.[studentData.department]?.[studentData.semester];
-    const programSubjects = studentData.program && studentData.semester && PROGRAM_DEPT_SEM_SUBJECTS[studentData.program]?.[studentData.semester];
-    const autoSubjects = deptSubjects
-      ? deptSubjects
-      : programSubjects || [];
+    const deptSubjects = studentData.program && studentData.department && studentData.semester && programDeptSemSubjects[studentData.program]?.[studentData.department]?.[studentData.semester];
+    const autoSubjects = deptSubjects || [];
 
     const newStudent = {
       id: Date.now(),
@@ -82,7 +78,7 @@ export const studentService = {
   },
 
   // Get attendance data for a month
-  getMonthlyAttendance: async (studentId, month, year, subject) => {
+  getMonthlyAttendance: async (studentId, month, year, subject, attendanceStatus) => {
     await new Promise(resolve => setTimeout(resolve, 600));
     
     const data = [];
@@ -98,11 +94,11 @@ export const studentService = {
         let status;
         
         if (random > 0.15) {
-          status = ATTENDANCE_STATUS.PRESENT;
+          status = attendanceStatus.PRESENT;
         } else if (random > 0.05) {
-          status = ATTENDANCE_STATUS.ABSENT;
+          status = attendanceStatus.ABSENT;
         } else {
-          status = ATTENDANCE_STATUS.LATE;
+          status = attendanceStatus.LATE;
         }
         
         data.push({
@@ -119,7 +115,7 @@ export const studentService = {
   },
 
   // Download monthly report
-  downloadMonthlyReport: async (studentData, attendanceData, month, year, subject) => {
+  downloadMonthlyReport: async (studentData, attendanceData, month, year, subject, attendanceStatus) => {
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -127,9 +123,9 @@ export const studentService = {
     
     const monthName = monthNames[month];
     const totalDays = attendanceData.length;
-    const presentDays = attendanceData.filter(d => d.status === ATTENDANCE_STATUS.PRESENT).length;
-    const absentDays = attendanceData.filter(d => d.status === ATTENDANCE_STATUS.ABSENT).length;
-    const lateDays = attendanceData.filter(d => d.status === ATTENDANCE_STATUS.LATE).length;
+    const presentDays = attendanceData.filter(d => d.status === attendanceStatus.PRESENT).length;
+    const absentDays = attendanceData.filter(d => d.status === attendanceStatus.ABSENT).length;
+    const lateDays = attendanceData.filter(d => d.status === attendanceStatus.LATE).length;
     const percentage = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0;
     
     // Prepare PDF data

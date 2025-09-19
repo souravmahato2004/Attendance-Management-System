@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfig } from '../../contexts/ConfigContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GraduationCap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
@@ -10,6 +11,7 @@ const TeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { mockCredentials } = useConfig();
   const { error: showError } = useToast();
   const navigate = useNavigate();
 
@@ -18,7 +20,7 @@ const TeacherLogin = () => {
     setLoading(true);
 
     try {
-      const response = await teacherService.login(credentials);
+      const response = await teacherService.login(credentials, mockCredentials);
       login(response.user);
       navigate('/teacher/dashboard');
     } catch (err) {
