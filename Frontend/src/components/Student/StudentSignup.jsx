@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, User, Mail, Lock, Hash, GraduationCap, Eye, EyeOff, Calendar } from 'lucide-react';
-import { PROGRAMS, SEMESTERS, PROGRAM_SEMESTER_SUBJECTS, DEPARTMENTS } from '../../utils/constants';
+import { PROGRAMS, SEMESTERS, PROGRAM_DEPT_SEM_SUBJECTS, DEPARTMENTS } from '../../utils/constants';
 import { studentService } from '../../services/studentService';
 import { validateEmail, validatePassword } from '../../utils/helpers';
 import { useToast } from '../../contexts/ToastContext';
@@ -30,7 +30,7 @@ const StudentSignup = () => {
     switch (name) {
       case 'name':
         if (!value.trim()) error = 'Name is required';
-        else if (value.length < 2) error = 'Name must be at least 2 characters';
+        else if (value.length < 3) error = 'Name must be at least 3 characters';
         break;
       case 'email':
         if (!value) error = 'Email is required';
@@ -38,7 +38,7 @@ const StudentSignup = () => {
         break;
       case 'password':
         if (!value) error = 'Password is required';
-        else if (!validatePassword(value)) error = 'Password must be at least 6 characters';
+        else if (!validatePassword(value)) error = 'Password must be at least 8 characters';
         break;
       case 'confirmPassword':
         if (!value) error = 'Please confirm your password';
@@ -184,7 +184,7 @@ const StudentSignup = () => {
               <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                 <p className="text-sm text-purple-700 font-medium mb-2">Subjects assigned for {formData.program} - {formData.department} - {formData.semester}:</p>
                 <div className="flex flex-wrap gap-2">
-                  {(PROGRAM_SEMESTER_SUBJECTS[formData.program]?.[formData.semester] || PROGRAM_DEPT_SEM_SUBJECTS[formData.program]?.[formData.department]?.[formData.semester] || []).map(sub => (
+                  {(PROGRAM_DEPT_SEM_SUBJECTS[formData.program]?.[formData.department]?.[formData.semester] || []).map(sub => (
                     <span key={sub} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">{sub}</span>
                   ))}
                 </div>

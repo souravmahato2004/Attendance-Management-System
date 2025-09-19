@@ -1,5 +1,5 @@
 import { api } from '../utils/api';
-import { API_ENDPOINTS, MOCK_CREDENTIALS, PROGRAM_SEMESTER_SUBJECTS, PROGRAM_DEPT_SEM_SUBJECTS } from '../utils/constants';
+import { API_ENDPOINTS, MOCK_CREDENTIALS, PROGRAM_DEPT_SEM_SUBJECTS } from '../utils/constants';
 import { generatePassword, downloadPDF, formatDate } from '../utils/helpers';
 
 export const adminService = {
@@ -163,7 +163,7 @@ export const adminService = {
     
     // Check if department-specific subjects exist, otherwise fall back to program-semester
     const deptSubjects = PROGRAM_DEPT_SEM_SUBJECTS?.[program]?.[department]?.[semester];
-    const programSubjects = PROGRAM_SEMESTER_SUBJECTS[program]?.[semester] || [];
+    const programSubjects = PROGRAM_DEPT_SEM_SUBJECTS[program]?.[semester] || [];
     
     return deptSubjects || programSubjects;
   },

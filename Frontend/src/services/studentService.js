@@ -1,5 +1,5 @@
 import { api } from '../utils/api';
-import { API_ENDPOINTS, MOCK_CREDENTIALS, ATTENDANCE_STATUS, PROGRAM_SEMESTER_SUBJECTS } from '../utils/constants';
+import { API_ENDPOINTS, MOCK_CREDENTIALS, ATTENDANCE_STATUS, PROGRAM_DEPT_SEM_SUBJECTS } from '../utils/constants';
 import { downloadPDF, formatDate } from '../utils/helpers';
 
 export const studentService = {
@@ -39,7 +39,7 @@ export const studentService = {
     
     // Auto-assign subjects based on program + department + semester if provided (department overrides), fallback to program-semester
     const deptSubjects = studentData.program && studentData.department && studentData.semester && PROGRAM_DEPT_SEM_SUBJECTS[studentData.program]?.[studentData.department]?.[studentData.semester];
-    const programSubjects = studentData.program && studentData.semester && PROGRAM_SEMESTER_SUBJECTS[studentData.program]?.[studentData.semester];
+    const programSubjects = studentData.program && studentData.semester && PROGRAM_DEPT_SEM_SUBJECTS[studentData.program]?.[studentData.semester];
     const autoSubjects = deptSubjects
       ? deptSubjects
       : programSubjects || [];
