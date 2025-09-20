@@ -13,56 +13,51 @@ export const useConfig = () => {
 export const ConfigProvider = ({ children }) => {
   // API Endpoints
   const [apiEndpoints] = useState({
-    // Admin endpoints
     ADMIN_LOGIN: '/api/admin/login',
     ADMIN_DASHBOARD: '/api/admin/dashboard',
     TEACHERS: '/api/admin/teachers',
-    
-    // Teacher endpoints
+
     TEACHER_LOGIN: '/api/teacher/login',
     TEACHER_DASHBOARD: '/api/teacher/dashboard',
     ATTENDANCE: '/api/teacher/attendance',
-    
-    // Student endpoints
+
     STUDENT_LOGIN: '/api/student/login',
     STUDENT_SIGNUP: '/api/student/signup',
     STUDENT_DASHBOARD: '/api/student/dashboard',
     STUDENT_ATTENDANCE: '/api/student/attendance',
   });
 
-  // Mock credentials - in a real app, this would come from environment variables or API
+  // Mock credentials from process.env
   const [mockCredentials] = useState({
-    ADMIN: { email: 'admin@university.com', password: 'admin123' },
-    TEACHER: { email: 'john@university.com', password: 'temp123' },
-    STUDENT: { email: 'alice@student.com', password: 'student123' }
+    ADMIN: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD },
+    TEACHER: { email: process.env.TEACHER_EMAIL, password: process.env.TEACHER_PASSWORD },
+    STUDENT: { email: process.env.STUDENT_EMAIL, password: process.env.STUDENT_PASSWORD },
   });
 
-  // Application configuration
+  // Config from process.env
   const [config, setConfig] = useState({
-    appName: 'Attendance Management System',
-    version: '1.0.0',
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+    appName: process.env.APP_NAME || 'Attendance Management System',
+    version: process.env.APP_VERSION || '1.0.0',
+    apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:5000',
     enableMockData: true,
     maxFileSize: 5 * 1024 * 1024, // 5MB
-    supportedFileTypes: ['image/jpeg', 'image/png', 'image/gif'],
-    paginationLimit: 10,
-    sessionTimeout: 30 * 60 * 1000, // 30 minutes
+    supportedFileTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+    paginationLimit: Number(process.env.PAGINATION_LIMIT) || 10,
+    sessionTimeout: Number(process.env.SESSION_TIMEOUT) || 30 * 60 * 1000,
   });
 
   const updateConfig = (updates) => {
     setConfig(prev => ({ ...prev, ...updates }));
   };
 
-  const getApiUrl = (endpoint) => {
-    return `${config.apiBaseUrl}${endpoint}`;
-  };
+  const getApiUrl = (endpoint) => `${config.apiBaseUrl}${endpoint}`;
 
   const value = {
     apiEndpoints,
     mockCredentials,
     config,
     updateConfig,
-    getApiUrl
+    getApiUrl,
   };
 
   return (
