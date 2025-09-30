@@ -10,17 +10,8 @@ app.use(cors());
 app.use(express.json());
 
 // --- API Routes ---
-
-// Example: A simple route to get all users
-app.get('/api/data', async (req, res) => {
-  // try {
-  //   const result = await db.query('SELECT * FROM your_table_name');
-  //   res.json(result.rows); // Send the rows back as JSON
-  // } catch (err) {
-  //   console.error(err.message);
-  //   res.status(500).send('Server error');
-  // }
-});
+const studentRoutes = require('./src/routes/students');
+app.use('/api/student', studentRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Attendease running on http://localhost:${port}`);

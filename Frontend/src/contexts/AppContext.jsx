@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
 const AppContext = createContext();
 
 export const useApp = () => {
@@ -26,44 +25,50 @@ export const AppProvider = ({ children }) => {
   });
 
   // Academic data - these would typically come from API
-  const [subjects, setSubjects] = useState([
-    'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science',
-    'Data Structures', 'Algorithms', 'Discrete Mathematics', 'Operating Systems', 'Database Systems',
-    'Networks', 'Electronics', 'Mechanical Engineering', 'Civil Engineering', 'English', 'History', 'Geography', 'Art'
-  ]);
+  const [subjects, setSubjects] = useState([]);
 
-  const [semesters, setSemesters] = useState([
-    'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 
-    'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8'
-  ]);
+  const getSubjects = async (program, department, semester) => {
+    const params = new URLSearchParams({
+      program: program,
+      department: department,
+      semester: semester
+    });
+    const response = await fetch(`http://localhost:3001/api/student/subjects?${params.toString()}`);
+    const data = await response.json();
+    setSubjects(data);
+  }
 
-  const [programs, setPrograms] = useState(['B.Tech', 'M.Tech', 'PhD']);
+  const [semesters, setSemesters] = useState([]);
 
-  const [departments, setDepartments] = useState(['CSE', 'ECE', 'EEE', 'ME', 'CE']);
+  const getsemesters = async () => {
+    const response = await fetch(`http://localhost:3001/api/student/semesters?`);
+    const data = await response.json();
+    setSemesters(data);
+  }
 
-  // Program + Department + Semester subject mappings
-  const [programDeptSemSubjects, setProgramDeptSemSubjects] = useState({
-    'B.Tech': {
-      'CSE': {
-        'Semester 1': ['Mathematics', 'Physics', 'English'],
-        'Semester 2': ['Mathematics', 'Chemistry', 'Computer Science'],
-        'Semester 3': ['Data Structures', 'Discrete Mathematics', 'Electronics'],
-        'Semester 4': ['Algorithms', 'Operating Systems', 'Networks']
-      },
-      'ECE': {
-        'Semester 1': ['Mathematics', 'Physics', 'English'],
-        'Semester 2': ['Mathematics', 'Chemistry', 'Electronics'],
-        'Semester 3': ['Signals and Systems', 'Digital Electronics', 'Network Theory'],
-        'Semester 4': ['Control Systems', 'Communication Systems', 'Microprocessors']
-      }
-    },
-    'M.Tech': {
-      'CSE': {
-        'Semester 1': ['Advanced Algorithms', 'Distributed Systems'],
-        'Semester 2': ['Machine Learning', 'Advanced Databases']
-      }
-    }
-  });
+  const [programs, setPrograms] = useState([]);
+
+  const getprograms = async () => {
+    const response = await fetch(`http://localhost:3001/api/student/programs`);
+    const data = await response.json();
+    setPrograms(data);
+  }
+
+  const [departments, setDepartments] = useState([]);
+
+  const getdepartments = async () => {
+    const response = await fetch(`http://localhost:3001/api/student/departments`);
+    const data = await response.json();
+    setDepartments(data);
+  }
+
+  
+  // i have to work on it later starting from here
+  // const getSubjects=async()=>{
+  //   const response=await fetch(`${process.env.API_BASE_URL}/api/students/subjects`);
+  //   const data=await response.json();
+  //   setProgramDeptSemSubjects(data);
+  // }
 
   // Methods to update academic data
   const addSubject = (subject) => {
@@ -137,7 +142,6 @@ export const AppProvider = ({ children }) => {
     semesters,
     programs,
     departments,
-    programDeptSemSubjects,
     
     // Methods
     addSubject,
@@ -154,7 +158,12 @@ export const AppProvider = ({ children }) => {
     setSemesters,
     setPrograms,
     setDepartments,
-    setProgramDeptSemSubjects
+
+    // api calls
+    getprograms,
+    getsemesters,
+    getdepartments,
+    getSubjects
   };
 
   return (

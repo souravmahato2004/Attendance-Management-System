@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, User, Mail, Lock, Hash, GraduationCap, Eye, EyeOff, Calendar } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -7,7 +7,6 @@ import { validateEmail, validatePassword } from '../../utils/helpers';
 import { useToast } from '../../contexts/ToastContext';
 
 const StudentSignup = () => {
-  const { programs, semesters, departments, programDeptSemSubjects } = useApp();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,6 +17,28 @@ const StudentSignup = () => {
     department: '',
     semester: ''
   });
+  const { programs, semesters, departments, subjects } = useApp();
+  const { getprograms, getsemesters, getdepartments, getSubjects } = useApp();
+  const [isLoadingSubjects, setisLoadingSubjects] = useState(false);
+
+  useEffect(() => {
+    getprograms();
+    getsemesters();
+    getdepartments();
+  }, []);
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      if (formData.program && formData.department && formData.semester) {
+        const semesterNumber = formData.semester.split(' ')[1];
+        setisLoadingSubjects(true);
+        getSubjects(formData.program, formData.department, semesterNumber);
+        setisLoadingSubjects(false);
+      }
+    };
+    fetchSubjects();
+  }, [formData.program, formData.department, formData.semester]);
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -181,16 +202,36 @@ const StudentSignup = () => {
             </div>
 
 
-            {formData.program && formData.department && formData.semester && (
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <p className="text-sm text-purple-700 font-medium mb-2">Subjects assigned for {formData.program} - {formData.department} - {formData.semester}:</p>
+            {/* This part goes in the component where you render the form/subjects */}
+
+          {formData.program && formData.department && formData.semester && (
+            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 mt-4">
+              <p className="text-sm text-purple-700 font-medium mb-2">
+                Subjects for {formData.program} - {formData.department} - {formData.semester}:
+              </p>
+              
+              {/* Show loading message */}
+              {isLoadingSubjects && (
+                <p className="text-sm text-purple-500">Loading subjects...</p>
+              )}
+
+              {/* Show subjects once loaded */}
+              {!isLoadingSubjects && subjects.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {(programDeptSemSubjects[formData.program]?.[formData.department]?.[formData.semester] || []).map(sub => (
-                    <span key={sub} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">{sub}</span>
+                  {subjects.map(sub => (
+                    <span key={sub} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">
+                      {sub}
+                    </span>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Show message if no subjects are found */}
+              {!isLoadingSubjects && subjects.length === 0 && (
+                <p className="text-sm text-purple-500">No subjects found for this selection.</p>
+              )}
+            </div>
+          )}
 
             {[{name: 'password', placeholder: 'Password', show: showPassword, setShow: setShowPassword}, {name: 'confirmPassword', placeholder: 'Confirm Password', show: showConfirmPassword, setShow: setShowConfirmPassword}].map(field => (
               <div key={field.name}>

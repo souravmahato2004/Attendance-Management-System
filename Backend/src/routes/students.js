@@ -1,12 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const db = require('../db'); // Note the path is now '../db'
+const db = require('../config/db');
 
 const router = express.Router();
 
-// --- NEW ROUTES for fetching academic data ---
-
-// GET all programs
 router.get('/programs', async (req, res) => {
   try {
     const result = await db.query('SELECT program_name FROM programs ORDER BY program_id');
@@ -95,29 +92,34 @@ router.post('/signup', async (req, res) => {
 
 // GET subjects for a specific program, department, and semester
 router.get('/subjects', async (req, res) => {
+  // 1. Read from req.query instead of req.body
   const { program, department, semester } = req.query;
 
+  // 2. Validate the required parameters
   if (!program || !department || !semester) {
-    return res.status(400).json({ message: 'Program, department, and semester are required.' });
+    return res.status(400).json({ message: 'Parameters "program", "department", and "semester" are required.' });
   }
 
-  const semesterNumber = parseInt(semester.split(' ')[1]);
+  // 3. Ensure semester is a valid number
+  const semesterNumber = parseInt(semester);
   if (isNaN(semesterNumber)) {
-    return res.status(400).json({ message: 'Invalid semester format.' });
+    return res.status(400).json({ message: 'The "semester" parameter must be a number.' });
   }
 
   try {
     const query = `
       SELECT s.subject_name
-      FROM subjects s
-      JOIN courses c ON s.course_id = c.course_id
-      JOIN programs p ON c.program_id = p.program_id
-      JOIN departments d ON c.department_id = d.department_id
+      FROM public.subjects s
+      JOIN public.courses c ON s.course_id = c.course_id
+      JOIN public.programs p ON c.program_id = p.program_id
+      JOIN public.departments d ON c.department_id = d.department_id
       WHERE p.program_name = $1
         AND d.department_name = $2
         AND c.semester = $3;
     `;
     const subjectsResult = await db.query(query, [program, department, semesterNumber]);
+
+    // This part of your code was already correct
     const subjectNames = subjectsResult.rows.map(row => row.subject_name);
     res.status(200).json(subjectNames);
 
