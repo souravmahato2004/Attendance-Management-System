@@ -41,7 +41,7 @@ export const AppProvider = ({ children }) => {
   const [semesters, setSemesters] = useState([]);
 
   const getsemesters = async () => {
-    const response = await fetch(`http://localhost:3001/api/student/semesters?`);
+    const response = await fetch(`http://localhost:3001/api/student/semesters`);
     const data = await response.json();
     setSemesters(data);
   }
