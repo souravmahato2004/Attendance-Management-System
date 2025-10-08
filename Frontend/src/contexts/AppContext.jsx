@@ -62,15 +62,6 @@ export const AppProvider = ({ children }) => {
     setDepartments(data);
   }
 
-  
-  // i have to work on it later starting from here
-  // const getSubjects=async()=>{
-  //   const response=await fetch(`${process.env.API_BASE_URL}/api/students/subjects`);
-  //   const data=await response.json();
-  //   setProgramDeptSemSubjects(data);
-  // }
-
-  // Methods to update academic data
   const addSubject = (subject) => {
     if (!subjects.includes(subject)) {
       setSubjects(prev => [...prev, subject]);

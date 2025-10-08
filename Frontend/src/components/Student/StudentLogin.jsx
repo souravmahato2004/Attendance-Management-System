@@ -20,8 +20,8 @@ const StudentLogin = () => {
     setLoading(true)
 
     try {
-      const response = await studentService.login(credentials, mockCredentials)
-      login(response.user)
+      const response = await studentService.login(credentials)
+      await login(response.student)
       navigate('/student/dashboard')
     } catch (err) {
       showError(err.message || 'Login failed')

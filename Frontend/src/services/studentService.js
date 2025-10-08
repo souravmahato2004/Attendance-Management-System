@@ -1,54 +1,58 @@
-import { api } from '../utils/api';
 import { downloadPDF, formatDate } from '../utils/helpers';
 
 export const studentService = {
-  // Mock login
-  login: async (credentials, mockCredentials) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (credentials.email === mockCredentials.STUDENT.email && 
-        credentials.password === mockCredentials.STUDENT.password) {
-      return {
-        success: true,
-        user: {
-          id: 1,
-          name: 'Alice Johnson',
-          email: credentials.email,
-          role: 'student',
-          rollNumber: '2023001',
-          program: 'B.Tech',
-          // College: students enroll in multiple subjects
-          enrolledSubjects: ['Data Structures', 'Algorithms', 'Discrete Mathematics'],
-          token: 'mock-student-token-' + Date.now()
-        }
-      };
-    } else {
-      throw new Error('Invalid credentials');
+  
+  login: async (credentials) => {
+  const API_URL = 'http://localhost:3001/api/student/login';
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(credentials),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok) {
+      throw new Error(responseData.message || 'An unknown error occurred.');
     }
-  },
+    return responseData;
+
+  } catch (error) {
+    console.error('Login API Error:', error);
+    // Re-throw the error so the component calling this function can handle it
+    throw error;
+  }
+},
 
   // Student signup
-  signup: async (studentData, programDeptSemSubjects) => {
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    // Mock validation - check if email already exists
-    if (studentData.email === 'alice@student.com') {
-      throw new Error('Email already exists');
-    }
-    
-    // Auto-assign subjects based on program + department + semester if provided (department overrides), fallback to program-semester
-    const deptSubjects = studentData.program && studentData.department && studentData.semester && programDeptSemSubjects[studentData.program]?.[studentData.department]?.[studentData.semester];
-    const autoSubjects = deptSubjects || [];
+  signup: async (studentData) => {
+    const API_URL = 'http://localhost:3001/api/student/signup';
+    try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(studentData), 
+    });
 
-    const newStudent = {
-      id: Date.now(),
-      ...studentData,
-      enrolledSubjects: autoSubjects,
-      program: studentData.program,
-      department: studentData.department,
-      semester: studentData.semester,
-      createdAt: new Date().toISOString()
-    };
+    // Parse the JSON response from the server
+    const responseData = await response.json();
+
+    // If the server returns an error status (e.g., 400, 409), throw an error
+    if (!response.ok) {
+      throw new Error(responseData.message || 'An unknown error occurred.');
+    }
+    return responseData;
+
+  } catch (error) {
+    console.error('Signup API Error:', error);
+    throw error;
+  }
     
     return {
       success: true,

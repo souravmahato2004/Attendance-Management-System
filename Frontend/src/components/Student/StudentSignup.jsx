@@ -114,7 +114,7 @@ const StudentSignup = () => {
 
     setLoading(true);
     try {
-      await studentService.signup(formData, programDeptSemSubjects);
+      await studentService.signup(formData);
       success('Account created successfully! Please sign in.');
       navigate('/student/login');
     } catch (err) {

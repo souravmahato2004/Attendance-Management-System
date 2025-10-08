@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const ConfigContext = createContext();
 
@@ -28,11 +28,20 @@ export const ConfigProvider = ({ children }) => {
   });
 
   // Mock credentials from process.env
-  const [mockCredentials] = useState({
-    ADMIN: { email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD },
-    TEACHER: { email: process.env.TEACHER_EMAIL, password: process.env.TEACHER_PASSWORD },
-    STUDENT: { email: process.env.STUDENT_EMAIL, password: process.env.STUDENT_PASSWORD },
-  });
+  const mockCredentials = {
+  ADMIN: { 
+    email: import.meta.env.VITE_ADMIN_EMAIL, 
+    password: import.meta.env.VITE_ADMIN_PASSWORD 
+  },
+  TEACHER: { 
+    email: import.meta.env.VITE_TEACHER_EMAIL, 
+    password: import.meta.env.VITE_TEACHER_PASSWORD 
+  },
+  STUDENT: { 
+    email: import.meta.env.VITE_STUDENT_EMAIL, 
+    password: import.meta.env.VITE_STUDENT_PASSWORD 
+  },
+};
 
   // Config from process.env
   const [config, setConfig] = useState({

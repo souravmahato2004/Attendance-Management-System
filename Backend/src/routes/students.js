@@ -40,6 +40,52 @@ router.get('/semesters', async (req, res) => {
     }
   });
 
+// Student Login Route
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
+
+  try {
+    // 1. Find the student by email
+    const studentResult = await db.query('SELECT * FROM students WHERE email = $1', [email]);
+
+    if (studentResult.rows.length === 0) {
+      // Use a generic message to avoid revealing if an email is registered
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+
+    const student = studentResult.rows[0];
+
+    // 2. Compare the provided password with the stored hash
+    const isMatch = await bcrypt.compare(password, student.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+    
+    // 3. Login successful!
+    // We'll add JWT logic here in the next step.
+    // For now, let's just send back the student info (without the password).
+    const { password: _, ...studentData } = student; // Exclude password from response
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Logged in successfully!',
+      student: {
+        ...studentData,
+        role: 'student'
+      }
+    });
+
+  } catch (err) {
+    console.error('Login Error:', err);
+    res.status(500).json({ message: 'An internal error occurred.' });
+  }
+});
+
 // Student Signup Route
 router.post('/signup', async (req, res) => {
   const { name, email, password, rollNumber, program, department, semester } = req.body;
@@ -74,7 +120,6 @@ router.post('/signup', async (req, res) => {
       `INSERT INTO students (name, email, password, roll_number, program_id, department_id, semester)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING student_id`,
-      // Use the converted semesterNumber here
       [name, email, hashedPassword, rollNumber, programId, departmentId, semesterNumber]
     );
 
