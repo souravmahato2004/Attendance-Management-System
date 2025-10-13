@@ -50,10 +50,16 @@ router.post('/login', async (req, res) => {
 
   try {
     // 1. Find the student by email
-    const studentResult = await db.query('SELECT * FROM students WHERE email = $1', [email]);
+    const studentResult = await db.query(
+      `SELECT s.*, p.program_name, d.department_name 
+       FROM students s
+       LEFT JOIN programs p ON s.program_id = p.program_id
+       LEFT JOIN departments d ON s.department_id = d.department_id
+       WHERE s.email = $1`,
+      [email]
+    );
 
     if (studentResult.rows.length === 0) {
-      // Use a generic message to avoid revealing if an email is registered
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
@@ -137,15 +143,12 @@ router.post('/signup', async (req, res) => {
 
 // GET subjects for a specific program, department, and semester
 router.get('/subjects', async (req, res) => {
-  // 1. Read from req.query instead of req.body
   const { program, department, semester } = req.query;
 
-  // 2. Validate the required parameters
   if (!program || !department || !semester) {
     return res.status(400).json({ message: 'Parameters "program", "department", and "semester" are required.' });
   }
 
-  // 3. Ensure semester is a valid number
   const semesterNumber = parseInt(semester);
   if (isNaN(semesterNumber)) {
     return res.status(400).json({ message: 'The "semester" parameter must be a number.' });
@@ -164,7 +167,6 @@ router.get('/subjects', async (req, res) => {
     `;
     const subjectsResult = await db.query(query, [program, department, semesterNumber]);
 
-    // This part of your code was already correct
     const subjectNames = subjectsResult.rows.map(row => row.subject_name);
     res.status(200).json(subjectNames);
 

@@ -53,17 +53,10 @@ export const studentService = {
     console.error('Signup API Error:', error);
     throw error;
   }
-    
-    return {
-      success: true,
-      student: newStudent,
-      message: 'Account created successfully'
-    };
   },
 
   // Get dashboard stats
   getDashboardStats: async (studentId, subject) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Mock different stats per subject
     const base = subject ? subject.length : 0;

@@ -5,6 +5,7 @@ import AttendanceCalendar from './AttendanceCalendar';
 import { Clock, Calendar, TrendingUp, Award, Target, BookOpen } from 'lucide-react';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useApp } from '../../contexts/AppContext';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -19,16 +20,21 @@ const StudentDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedSubject, setSelectedSubject] = useState('');
 
+  const { subjects } = useApp();
+  const { getSubjects } = useApp();
+
   useEffect(() => {
-    if (user?.enrolledSubjects?.length && !selectedSubject) {
-      setSelectedSubject(user.enrolledSubjects[0]);
+    if (user && user.program_name && user.department_name && user.semester) {
+      getSubjects(user.program_name, user.department_name, user.semester);
     }
   }, [user]);
 
   useEffect(() => {
-    if (!selectedSubject) return;
-    loadDashboardData();
-  }, [selectedSubject]);
+    if (subjects && subjects.length > 0) {
+      setSelectedSubject(subjects[0]);
+      loadDashboardData();
+    }
+  }, [subjects]); 
 
   const loadDashboardData = async () => {
     try {
@@ -64,15 +70,15 @@ const StudentDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <p className="text-purple-100 text-sm">Roll Number</p>
-              <p className="font-semibold text-lg">{user.rollNumber}</p>
+              <p className="font-semibold text-lg">{user.roll_number}</p>
             </div>
             <div>
               <p className="text-purple-100 text-sm">Program</p>
-              <p className="font-semibold text-lg">{user.program}</p>
+              <p className="font-semibold text-lg">{user.program_name}</p>
             </div>
             <div>
               <p className="text-purple-100 text-sm">Department</p>
-              <p className="font-semibold text-lg">{user.department || '—'}</p>
+              <p className="font-semibold text-lg">{user.department_name || '—'}</p>
             </div>
             <div>
               <p className="text-purple-100 text-sm">Semester</p>
@@ -83,20 +89,23 @@ const StudentDashboard = () => {
               <p className="font-semibold text-lg">{stats.attendancePercentage}%</p>
             </div>
           </div>
-          {user.enrolledSubjects?.length ? (
+          {subjects?.length > 0 && (
             <div className="mt-4">
-              <label className="text-sm text-purple-100 mr-2">Subject:</label>
+              <label htmlFor="subject-select" className="text-sm text-purple-100 mr-2">
+                Viewing Attendance For:
+              </label>
               <select
+                id="subject-select"
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="px-3 py-2 rounded-md text-gray-900"
+                className="bg-white/20 border border-white/40 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
               >
-                {user.enrolledSubjects.map(sub => (
-                  <option key={sub} value={sub}>{sub}</option>
+                {subjects.map(sub => (
+                  <option key={sub} value={sub} className='text-gray-900'>{sub}</option>
                 ))}
               </select>
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* Navigation Tabs */}
