@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfig } from '../../contexts/ConfigContext';
@@ -20,7 +20,7 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const response = await adminService.login(credentials, mockCredentials);
+      const response = await adminService.login(credentials);
       login(response.user);
       navigate('/admin/dashboard');
     } catch (err) {

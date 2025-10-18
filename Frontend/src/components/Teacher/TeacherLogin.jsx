@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useConfig } from '../../contexts/ConfigContext';
 import { useToast } from '../../contexts/ToastContext';
 import { GraduationCap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
@@ -11,7 +10,6 @@ const TeacherLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const { mockCredentials } = useConfig();
   const { error: showError } = useToast();
   const navigate = useNavigate();
 
@@ -20,7 +18,7 @@ const TeacherLogin = () => {
     setLoading(true);
 
     try {
-      const response = await teacherService.login(credentials, mockCredentials);
+      const response = await teacherService.login(credentials);
       login(response.user);
       navigate('/teacher/dashboard');
     } catch (err) {
@@ -100,11 +98,9 @@ const TeacherLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              // FIXED: Replaced 'btn-primary' with Tailwind classes matching the theme
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
             >
               {loading ? (
-                // FIXED: Replaced 'loading-spinner' with a working Tailwind spinner
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
               ) : (
                 'Sign in'

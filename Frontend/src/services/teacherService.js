@@ -1,26 +1,29 @@
-import { api } from '../utils/api';
-
 export const teacherService = {
   // Mock login
-  login: async (credentials, mockCredentials) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (credentials.email === mockCredentials.TEACHER.email && 
-        credentials.password === mockCredentials.TEACHER.password) {
+  login: async (credentials) => {
+    const apiUrl = 'http://localhost:3001/api/teacher/login';
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+      console.log('Login Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed.');
+      }
       return {
         success: true,
-        user: {
-          id: 1,
-          name: 'John Doe',
-          email: credentials.email,
-          role: 'teacher',
-          // College: teachers can have multiple subjects
-          subjects: ['Data Structures', 'Algorithms'],
-          token: 'mock-teacher-token-' + Date.now()
-        }
+        user: data.teacher
       };
-    } else {
-      throw new Error('Invalid credentials');
+
+    } catch (error) {
+      throw error;
     }
   },
 

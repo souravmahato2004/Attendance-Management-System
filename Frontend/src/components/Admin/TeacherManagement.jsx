@@ -1,29 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, User, Mail, Phone, MapPin, BookOpen, Save, X } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
+import { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, User, Mail, Lock, Save, X, Hash, Building2, BookOpen } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const TeacherManagement = () => {
-  const { subjects: availableSubjects } = useApp();
   const [teachers, setTeachers] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
   const { showToast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+
+
+  const filteredSubjects = subjects.filter((subject) =>
+    subject.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const [formData, setFormData] = useState({
+    teacherId: '',
     name: '',
     email: '',
-    phone: '',
-    address: '',
-    subjects: []
+    password: '',
+    departmentId: '',
+    subjectIds: [] // multiple subjects
   });
 
   useEffect(() => {
     loadTeachers();
+    loadDepartments();
+    loadSubjects();
   }, []);
 
+  // Fetch teachers
   const loadTeachers = async () => {
     try {
       setLoading(true);
@@ -36,6 +46,27 @@ const TeacherManagement = () => {
     }
   };
 
+
+  // Fetch departments
+  const loadDepartments = async () => {
+    try {
+      const data = await adminService.getDepartments();
+      setDepartments(data);
+    } catch (error) {
+      showToast('Failed to load departments', 'error');
+    }
+  };
+
+  // Fetch subjects
+  const loadSubjects = async () => {
+    try {
+      const data = await adminService.getAllSubjects();
+      setSubjects(data);
+    } catch (error) {
+      showToast('Failed to load subjects', 'error');
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -44,14 +75,29 @@ const TeacherManagement = () => {
     }));
   };
 
-  const handleSubjectToggle = (subject) => {
-    setFormData(prev => ({
-      ...prev,
-      subjects: prev.subjects.includes(subject)
-        ? prev.subjects.filter(s => s !== subject)
-        : [...prev.subjects, subject]
-    }));
-  };
+  // Handle multiple subject selection
+  const handleSubjectsChange = (e) => {
+  const { value, checked } = e.target;
+  const id = Number(value); // convert to number so it matches your DB IDs
+
+  setFormData((prev) => {
+    let updatedSubjects;
+
+    if (checked) {
+      // Add only if not already present
+      updatedSubjects = prev.subjectIds.includes(id)
+        ? prev.subjectIds
+        : [...prev.subjectIds, id];
+    } else {
+      // Remove when unchecked
+      updatedSubjects = prev.subjectIds.filter((sid) => sid !== id);
+    }
+
+    return { ...prev, subjectIds: updatedSubjects };
+  });
+};
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,11 +107,11 @@ const TeacherManagement = () => {
         showToast('Teacher updated successfully', 'success');
         setEditingTeacher(null);
       } else {
-        await adminService.addTeacherWithSubject(formData);
+        await adminService.addTeacher(formData);
         showToast('Teacher added successfully', 'success');
       }
       setShowAddForm(false);
-      setFormData({ name: '', email: '', phone: '', address: '', subjects: [] });
+      setFormData({ teacherId: '', name: '', email: '', password: '', departmentId: '', subjectIds: [] });
       loadTeachers();
     } catch (error) {
       showToast(error.message || 'Failed to save teacher', 'error');
@@ -75,11 +121,12 @@ const TeacherManagement = () => {
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
     setFormData({
-      name: teacher.name,
-      email: teacher.email,
-      phone: teacher.phone || '',
-      address: teacher.address || '',
-      subjects: teacher.subjects || []
+      teacherId: teacher.teacherId || '',
+      name: teacher.name || '',
+      email: teacher.email || '',
+      password: '',
+      departmentId: teacher.departmentId || '',
+      subjectIds: teacher.subjectIds || []
     });
     setShowAddForm(true);
   };
@@ -99,7 +146,7 @@ const TeacherManagement = () => {
   const handleCancel = () => {
     setShowAddForm(false);
     setEditingTeacher(null);
-    setFormData({ name: '', email: '', phone: '', address: '', subjects: [] });
+    setFormData({ teacherId: '', name: '', email: '', password: '', departmentId: '', subjectIds: [] });
   };
 
   if (loading) {
@@ -116,7 +163,7 @@ const TeacherManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Teacher Management</h2>
-          <p className="text-gray-600">Manage teachers and their subject assignments</p>
+          <p className="text-gray-600">Manage teachers, their departments, and assigned subjects</p>
         </div>
         <button
           onClick={() => setShowAddForm(true)}
@@ -134,20 +181,33 @@ const TeacherManagement = () => {
             <h3 className="text-lg font-semibold text-gray-900">
               {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
             </h3>
-            <button
-              onClick={handleCancel}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={handleCancel} className="text-gray-400 hover:text-gray-600">
               <X className="h-5 w-5" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Teacher ID */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Teacher ID *</label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    name="teacherId"
+                    value={formData.teacherId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter teacher ID"
+                  />
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -162,10 +222,9 @@ const TeacherManagement = () => {
                 </div>
               </div>
 
+              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
@@ -180,59 +239,119 @@ const TeacherManagement = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter phone number"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter address"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Subject Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Subject Assignments
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {availableSubjects.map(subject => (
-                  <label key={subject} className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50 cursor-pointer">
+              {/* Password */}
+              {!editingTeacher && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
-                      type="checkbox"
-                      checked={formData.subjects.includes(subject)}
-                      onChange={() => handleSubjectToggle(subject)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter password"
                     />
-                    <span className="text-sm text-gray-700">{subject}</span>
-                  </label>
-                ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Department */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <select
+                    name="departmentId"
+                    value={formData.departmentId}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a department</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Subjects Multi-select */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign Subjects *
+                </label>
+                {/* Subjects Multi-select (Improved) */}
+                <div className="md:col-span-2">
+
+                  <div className="relative">
+                    <BookOpen className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search subjects..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                    />
+
+                    <div className="border border-gray-300 rounded-lg h-64 overflow-y-auto p-2">
+                      {filteredSubjects.length > 0 ? (
+                        filteredSubjects.map((subject) => (
+                          <label
+                            key={subject.id}
+                            className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-50 rounded-md cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              value={subject.id}
+                              checked={formData.subjectIds.includes(subject.id)}
+                              onChange={handleSubjectsChange}
+                              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-700">{subject.name}</span>
+                          </label>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          No subjects found
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {formData.subjectIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.subjectIds.map((id) => {
+                        const subject = subjects.find((s) => s.id === id);
+                        return (
+                          <span
+                            key={id}
+                            className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+                          >
+                            {subject?.name}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  subjectIds: prev.subjectIds.filter((sid) => sid !== id),
+                                }))
+                              }
+                              className="hover:text-red-500"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                </div>
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">
@@ -271,59 +390,32 @@ const TeacherManagement = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Teacher
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Subjects
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subjects</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {teachers.map(teacher => (
                   <tr key={teacher.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
-                        <div className="text-sm text-gray-500">ID: {teacher.id}</div>
-                      </div>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{teacher.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{teacher.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {departments.find(d => d.id === teacher.departmentId)?.name || '—'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{teacher.email}</div>
-                      {teacher.phone && (
-                        <div className="text-sm text-gray-500">{teacher.phone}</div>
-                      )}
+                    <td className="px-6 py-4 text-sm text-gray-700">
+                      {teacher.subjects && teacher.subjects.length > 0
+                        ? teacher.subjects.map(s => s.name).join(', ')
+                        : '—'}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {(teacher.subjects || []).map(subject => (
-                          <span
-                            key={subject}
-                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            {subject}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(teacher)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
+                        <button onClick={() => handleEdit(teacher)} className="text-blue-600 hover:text-blue-900">
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(teacher.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
+                        <button onClick={() => handleDelete(teacher.id)} className="text-red-600 hover:text-red-900">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

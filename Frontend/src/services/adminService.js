@@ -1,27 +1,32 @@
-import { api } from '../utils/api';
 import { generatePassword, downloadPDF, formatDate } from '../utils/helpers';
 
 // This service will be updated to use context data when called from components
 export const adminService = {
-  // Mock login - replace with real API call
-  login: async (credentials, mockCredentials) => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (credentials.email === mockCredentials.ADMIN.email && 
-        credentials.password === mockCredentials.ADMIN.password) {
+
+  login: async (credentials) => {
+    const apiUrl = 'http://localhost:3001/api/admin/login';
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json();
+      console.log('Login Response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed.');
+      }
       return {
         success: true,
-        user: {
-          id: 1,
-          name: 'Administrator',
-          email: credentials.email,
-          role: 'admin',
-          token: 'mock-admin-token-' + Date.now()
-        }
+        user: data.admin
       };
-    } else {
-      throw new Error('Invalid credentials');
+
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -262,10 +267,38 @@ export const adminService = {
     };
   },
 
+  getDepartments: async () => {
+    const apiUrl = 'http://localhost:3001/api/admin/departments';
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET'
+      });
+
+      const departments = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed.');
+      }
+      return departments;
+    } catch (error) {
+      throw error;
+    }    
+  },
+
   // Get all subjects
-  getAllSubjects: async (subjects) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return subjects;
+  getAllSubjects: async () => {
+    const apiUrl = 'http://localhost:3001/api/admin/subjects';
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET'
+      });
+
+      const subjects = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed.');
+      }
+      return subjects;
+    } catch (error) {
+      throw error;
+    }    
   }
 };
