@@ -10,7 +10,7 @@ const TeacherManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
-  const { showToast } = useToast();
+  const { success, eror } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
 
 
@@ -97,24 +97,22 @@ const TeacherManagement = () => {
   });
 };
 
-
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingTeacher) {
         await adminService.updateTeacher(editingTeacher.id, formData);
-        showToast('Teacher updated successfully', 'success');
+        success('Teacher updated successfully');
         setEditingTeacher(null);
       } else {
-        await adminService.addTeacher(formData);
-        showToast('Teacher added successfully', 'success');
+        await adminService.addTeacherWithSubject(formData);
+        success('Teacher added successfully');
       }
       setShowAddForm(false);
       setFormData({ teacherId: '', name: '', email: '', password: '', departmentId: '', subjectIds: [] });
       loadTeachers();
     } catch (error) {
-      showToast(error.message || 'Failed to save teacher', 'error');
+      eror(error.message || 'Failed to save teacher');
     }
   };
 
@@ -390,6 +388,7 @@ const TeacherManagement = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -399,16 +398,22 @@ const TeacherManagement = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {teachers.map(teacher => (
-                  <tr key={teacher.id} className="hover:bg-gray-50">
+                  <tr key={teacher.teacher_id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm text-gray-900">{teacher.teacher_id || '—'}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{teacher.name}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{teacher.email}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {departments.find(d => d.id === teacher.departmentId)?.name || '—'}
+                      {departments.find(d => d.id === teacher.department_id)?.name || '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {teacher.subjects && teacher.subjects.length > 0
-                        ? teacher.subjects.map(s => s.name).join(', ')
-                        : '—'}
+                      {teacher.subjects && teacher.subjects.length > 0 ? (
+                        <ul>
+                          {teacher.subjects.map((subject) => (
+                            <li key={subject.subject_id}>
+                              {subject.subject_name}
+                            </li>
+                          ))}
+                        </ul>) : (<em>No subjects assigned</em>)}
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">

@@ -1,10 +1,10 @@
 import { generatePassword, downloadPDF, formatDate } from '../utils/helpers';
-
+const API_URL = 'http://localhost:3001/api/admin';
 // This service will be updated to use context data when called from components
 export const adminService = {
 
   login: async (credentials) => {
-    const apiUrl = 'http://localhost:3001/api/admin/login';
+    const apiUrl = `${API_URL}/login`;
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -47,78 +47,181 @@ export const adminService = {
 
   // Get all teachers
   getTeachers: async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [
-      { 
-        id: 1, 
-        name: 'John Doe', 
-        email: 'john@university.com', 
-        subject: 'Mathematics', 
-        phone: '123-456-7890', 
-        address: '123 Main St',
-        createdAt: '2024-01-15'
-      },
-      { 
-        id: 2, 
-        name: 'Jane Smith', 
-        email: 'jane@university.com', 
-        subject: 'English', 
-        phone: '098-765-4321', 
-        address: '456 Oak Ave',
-        createdAt: '2024-02-20'
-      },
-      { 
-        id: 3, 
-        name: 'Mike Johnson', 
-        email: 'mike@university.com', 
-        subject: 'Science', 
-        phone: '555-123-4567', 
-        address: '789 Pine Rd',
-        createdAt: '2024-03-10'
+    // 1. Define the API endpoint
+    const apiUrl = `${API_URL}/getTeachers`; // Calls GET /api/admin/teachers
+
+    try {
+      // 2. Make the fetch request
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header if required
+        },
+      });
+
+      const data = await response.json();
+
+      // 3. Check if the request was successful
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch teachers.');
       }
-    ];
+
+      // 4. Return the array of teachers
+      //    The backend sends an array like:
+      //    [{ teacher_id, name, email, department_id, department_name }, ...]
+      return data;
+
+    } catch (error) {
+      throw error;
+    }
   },
 
-  // Add new teacher
-  addTeacher: async (teacherData) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newTeacher = {
-      id: Date.now(),
-      ...teacherData,
-      password: generatePassword(),
-      createdAt: new Date().toISOString()
-    };
-    
-    // In real implementation, send email with credentials
-    console.log('Sending welcome email to:', teacherData.email);
-    
-    return {
-      success: true,
-      teacher: newTeacher,
-      message: 'Teacher added successfully'
-    };
-  },
+  // Add teacher with subject assignment
+  addTeacherWithSubject: async (teacherData) => {
+    const { subjectIds, ...coreTeacherData } = teacherData;
+    let newTeacherId;
+    let createdTeacher;
 
+    try {
+      const addTeacherUrl = `${API_URL}/add-teacher`;
+      const addTeacherResponse = await fetch(addTeacherUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header if required
+        },
+        body: JSON.stringify(coreTeacherData),
+      });
+
+      const addTeacherData = await addTeacherResponse.json();
+      if (!addTeacherResponse.ok) {
+        throw new Error(addTeacherData.message || 'Failed to add teacher.');
+      }
+
+      // Get the new teacher's ID from the successful response
+      newTeacherId = addTeacherData.teacher_id;
+      // Store the created teacher data (minus password) for the return
+      const { password, ...newTeacher } = coreTeacherData;
+      createdTeacher = {
+        ...newTeacher,
+        teacher_id: newTeacherId
+      };
+
+      // --- STEP 2: If subjects were provided, assign them ONE BY ONE ---
+      // We check if the subjects array exists and has items
+      if (subjectIds && subjectIds.length > 0) {
+        
+        // This is your new backend route
+        const assignSubjectsUrl = `${API_URL}/assignSubjects`;
+        
+        // Create an array of fetch promises, one for each subject
+        const assignmentPromises = subjectIds.map(subjectId => {
+          return fetch(assignSubjectsUrl, {
+            method: 'POST', // Use POST as defined in your backend
+            headers: {
+              'Content-Type': 'application/json',
+              // TODO: Add Authorization header if required
+            },
+            // Your backend expects: { "teacher_id": "...", "subject_id": "..." }
+            body: JSON.stringify({ 
+              teacher_id: newTeacherId, // The ID from Step 1
+              subject_id: subjectId     // The current subject from the array
+            }),
+          }).then(async (response) => {
+            // We need to check if the individual request failed
+            if (!response.ok) {
+              const errorData = await response.json();
+              // Throw an error to make Promise.all reject
+              throw new Error(errorData.message || 'Failed to assign a subject.');
+            }
+            return response.json();
+          });
+        });
+
+        // Wait for all assignment promises to resolve
+        // If ANY of them fail, this will throw an error
+        // and be caught by the outer try...catch block.
+        await Promise.all(assignmentPromises);
+      }
+
+      // --- SUCCESS: Both steps completed ---
+      return {
+        success: true,
+        message: 'Teacher created and subjects assigned successfully!',
+        teacher: createdTeacher, // Return the newly created teacher data
+      };
+
+    } catch (error) {
+      // Check if the error happened AFTER teacher creation
+      if (newTeacherId) {
+        // Step 1 succeeded, but Step 2 (subject assignment) failed
+        // This means the teacher exists, but assignments are incomplete.
+        throw new Error(
+          `Teacher was created (ID: ${newTeacherId}), but subject assignment failed: ${error.message}`
+        );
+      } else {
+        // Step 1 (teacher creation) failed
+        // Re-throw the original error
+        throw error;
+      }
+    }
+  },
   // Update teacher
   updateTeacher: async (id, teacherData) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    return {
-      success: true,
-      teacher: { id, ...teacherData, updatedAt: new Date().toISOString() },
-      message: 'Teacher updated successfully'
-    };
+    // NOTE: This assumes your backend route is /api/admin/teacher/:id
+    const apiUrl = `${API_URL}/teacher/${id}`; 
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'PUT', // Or 'PATCH'
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header if required
+        },
+        body: JSON.stringify(teacherData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update teacher.');
+      }
+
+      return {
+        success: true,
+        teacher: data.teacher, // Assuming backend returns the updated teacher object
+        message: data.message,
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Delete teacher
   deleteTeacher: async (id) => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    return {
-      success: true,
-      message: 'Teacher deleted successfully'
-    };
+    // NOTE: This assumes your backend route is /api/admin/teacher/:id
+    const apiUrl = `${API_URL}/teacher/${id}`; 
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          // TODO: Add Authorization header if required
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete teacher.');
+      }
+
+      return {
+        success: true,
+        message: data.message,
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // Get students by program
@@ -132,28 +235,8 @@ export const adminService = {
     ];
   },
 
-  // Add teacher with subject assignment
-  addTeacherWithSubject: async (teacherData) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newTeacher = {
-      id: Date.now(),
-      ...teacherData,
-      password: generatePassword(),
-      subjects: teacherData.subjects || [],
-      createdAt: new Date().toISOString()
-    };
-    
-    return {
-      success: true,
-      teacher: newTeacher,
-      message: 'Teacher added successfully with subject assignments'
-    };
-  },
-
   // Update teacher subjects
   updateTeacherSubjects: async (teacherId, subjects) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
     
     return {
       success: true,

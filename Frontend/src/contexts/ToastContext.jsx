@@ -35,7 +35,7 @@ export const ToastProvider = ({ children }) => {
     return addToast(message, 'success', duration);
   }, [addToast]);
 
-  const error = useCallback((message, duration) => {
+  const eror = useCallback((message, duration) => {
     return addToast(message, 'error', duration);
   }, [addToast]);
 
@@ -52,7 +52,7 @@ export const ToastProvider = ({ children }) => {
     addToast,
     removeToast,
     success,
-    error,
+    eror,
     warning,
     info
   };
