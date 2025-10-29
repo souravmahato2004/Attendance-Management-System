@@ -101,7 +101,7 @@ const TeacherManagement = () => {
     e.preventDefault();
     try {
       if (editingTeacher) {
-        await adminService.updateTeacher(editingTeacher.id, formData);
+        await adminService.updateTeacher(editingTeacher.teacher_id, formData);
         success('Teacher updated successfully');
         setEditingTeacher(null);
       } else {
@@ -119,12 +119,12 @@ const TeacherManagement = () => {
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
     setFormData({
-      teacherId: teacher.teacherId || '',
+      teacherId: teacher.teacher_id || '',
       name: teacher.name || '',
       email: teacher.email || '',
       password: '',
-      departmentId: teacher.departmentId || '',
-      subjectIds: teacher.subjectIds || []
+      departmentId: teacher.department_id || '',
+      subjectIds: (teacher.subjects || []).map(subject => subject.subject_id)
     });
     setShowAddForm(true);
   };
@@ -133,10 +133,10 @@ const TeacherManagement = () => {
     if (window.confirm('Are you sure you want to delete this teacher?')) {
       try {
         await adminService.deleteTeacher(teacherId);
-        showToast('Teacher deleted successfully', 'success');
+        success('Teacher deleted successfully');
         loadTeachers();
       } catch (error) {
-        showToast('Failed to delete teacher', 'error');
+        eror('Failed to delete teacher');
       }
     }
   };
@@ -420,7 +420,7 @@ const TeacherManagement = () => {
                         <button onClick={() => handleEdit(teacher)} className="text-blue-600 hover:text-blue-900">
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button onClick={() => handleDelete(teacher.id)} className="text-red-600 hover:text-red-900">
+                        <button onClick={() => handleDelete(teacher.teacher_id)} className="text-red-600 hover:text-red-900">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

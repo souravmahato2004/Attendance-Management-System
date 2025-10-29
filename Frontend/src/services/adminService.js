@@ -167,29 +167,50 @@ export const adminService = {
       }
     }
   },
-  // Update teacher
+
+  // Update teacher (and their subjects)
   updateTeacher: async (id, teacherData) => {
-    // NOTE: This assumes your backend route is /api/admin/teacher/:id
-    const apiUrl = `${API_URL}/teacher/${id}`; 
+    // 1. Define the API endpoint
+    const apiUrl = `${API_URL}/teacher/${id}`; // Calls PUT /api/admin/teacher/:id
+    
+    // 2. Destructure the data from the form
+    const { 
+      subjectIds,   // This is the array [1, 2, 3]
+      departmentId, // This is '5'
+      teacherId,    // We don't need to send this in the body
+      password,     // We don't send a password on update
+      ...coreData   // This is { name, email }
+    } = teacherData;
+
+    // 3. Build the payload in the format the backend expects (snake_case)
+    const payload = {
+      ...coreData,                   // { name, email }
+      department_id: departmentId,   // Rename to 'department_id'
+      subject_ids: subjectIds        // Rename to 'subject_ids'
+    };
+
     try {
+      // 4. Make the fetch request
       const response = await fetch(apiUrl, {
-        method: 'PUT', // Or 'PATCH'
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           // TODO: Add Authorization header if required
         },
-        body: JSON.stringify(teacherData),
+        body: JSON.stringify(payload), // Send the new formatted payload
       });
 
       const data = await response.json();
 
+      // 5. Handle response
       if (!response.ok) {
         throw new Error(data.message || 'Failed to update teacher.');
       }
 
+      // 6. Return success
       return {
         success: true,
-        teacher: data.teacher, // Assuming backend returns the updated teacher object
+        teacher: data.teacher, // Backend returns the updated teacher object
         message: data.message,
       };
     } catch (error) {
@@ -199,8 +220,7 @@ export const adminService = {
 
   // Delete teacher
   deleteTeacher: async (id) => {
-    // NOTE: This assumes your backend route is /api/admin/teacher/:id
-    const apiUrl = `${API_URL}/teacher/${id}`; 
+    const apiUrl = `${API_URL}/teacher/${id}`; // Calls DELETE /api/admin/teacher/:id
     try {
       const response = await fetch(apiUrl, {
         method: 'DELETE',

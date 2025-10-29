@@ -288,21 +288,33 @@ router.get('/subjects', async (req, res) => {
   }
 });
 
-// --- NEW ROUTE ---
-// Update Teacher Details
-// Note: This route updates basic info. Password resets should be handled separately.
+// --- UPDATED ROUTE ---
+// Update Teacher Details AND Subjects (All-in-One)
+// This now handles both basic info and subject assignments in one transaction.
 router.put('/teacher/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, email, department_id } = req.body;
+    // Get the data from the body.
+    // **IMPORTANT**: The frontend will send 'subject_ids'
+    const { name, email, department_id, subject_ids } = req.body;
 
     // 1. Validation
     if (!name || !email || !department_id) {
         return res.status(400).json({ message: 'Name, email, and department_id are required.' });
     }
+    // Ensure subject_ids is an array, even if it's empty
+    if (!Array.isArray(subject_ids)) {
+       return res.status(400).json({ message: 'Request body must contain a "subject_ids" array.' });
+    }
+
+    // 2. We need a transaction to update two tables safely
+    const client = await db.connect();
 
     try {
-        // 2. Run the update query
-        const updateResult = await db.query(
+        // 3. Start transaction
+        await client.query('BEGIN');
+
+        // 4. Update the teacher's basic details in 'teachers' table
+        const updateResult = await client.query(
             `UPDATE teachers
              SET name = $1, email = $2, department_id = $3
              WHERE teacher_id = $4
@@ -310,36 +322,76 @@ router.put('/teacher/:id', async (req, res) => {
             [name, email, department_id, id]
         );
 
-        // 3. Check if the teacher was found and updated
+        // 4b. Check if the teacher was found
         if (updateResult.rowCount === 0) {
+            await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Teacher not found.' });
         }
 
-        // 4. Send back the updated teacher data (minus password)
+        // 5. Sync the subjects in 'teacher_subjects' table
+        
+        // 5a. Delete all *existing* assignments for this teacher
+        await client.query(
+            'DELETE FROM teacher_subjects WHERE teacher_id = $1',
+            [id]
+        );
+
+        // 5b. Insert the new assignments from the provided array
+        //     (Only if the array is not empty)
+        if (subject_ids.length > 0) {
+            // Build query: ($1, $2), ($1, $3), ($1, $4)
+            const valuesPlaceholders = subject_ids.map((_, index) => {
+                return `($1, $${index + 2})`; // $1 is always teacher_id
+            }).join(', ');
+            
+            const insertQuery = `
+                INSERT INTO teacher_subjects (teacher_id, subject_id)
+                VALUES ${valuesPlaceholders}
+            `;
+            
+            // Build values: ['B230036CS', 1, 5, 10]
+            const insertValues = [id, ...subject_ids];
+            
+            // Run the insert
+            await client.query(insertQuery, insertValues);
+        }
+
+        // 6. Commit the transaction
+        await client.query('COMMIT');
+
+        // 7. Send back the updated teacher data (minus password)
         const { password: _, ...updatedTeacher } = updateResult.rows[0];
         res.status(200).json({
             success: true,
-            message: 'Teacher updated successfully.',
+            message: 'Teacher and assignments updated successfully.',
             teacher: updatedTeacher
         });
 
     } catch (err) {
-        // 5. Handle errors
+        // 8. If any error occurs, roll back the entire transaction
+        await client.query('ROLLBACK');
+        
+        // Handle specific errors
         if (err.code === '23505') { // unique_violation
             return res.status(409).json({ message: 'Email already exists for another user.' });
         }
         if (err.code === '23503') { // foreign_key_violation
-            return res.status(404).json({ message: 'The specified Department ID does not exist.' });
+            if (err.constraint === 'teachers_department_id_fkey') {
+                return res.status(404).json({ message: 'The specified Department ID does not exist.' });
+            }
+            // This error will also catch bad subject_ids
+            return res.status(404).json({ message: 'Error: A specified Department or Subject ID does not exist.' });
         }
+        
         console.error('Update Teacher Error:', err);
         res.status(500).json({ message: 'An error occurred while updating the teacher.' });
+    } finally {
+        // 9. Always release the client back to the pool
+        client.release();
     }
 });
 
-// --- UPDATED ROUTE ---
-// Delete a Teacher
-// This will now ALSO delete all subject assignments for this teacher
-// in a single transaction.
+// Delete a Teacher (and all their assignments)
 router.delete('/teacher/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -351,7 +403,7 @@ router.delete('/teacher/:id', async (req, res) => {
         await client.query('BEGIN');
 
         // 2. Delete all subject assignments for this teacher
-        // This runs first to avoid the foreign key 'ON DELETE RESTRICT' error
+        // This runs first to avoid any foreign key errors
         await client.query(
             'DELETE FROM teacher_subjects WHERE teacher_id = $1',
             [id]
@@ -365,9 +417,9 @@ router.delete('/teacher/:id', async (req, res) => {
 
         // 4. Check if a row was actually deleted (i.e., teacher existed)
         if (deleteResult.rowCount === 0) {
-            // If no teacher was found, roll back the transaction
+            // If no teacher was found, roll back
             await client.query('ROLLBACK');
-            return res.status(44).json({ message: 'Teacher not found.' });
+            return res.status(404).json({ message: 'Teacher not found.' });
         }
 
         // 5. If everything is good, commit the transaction
