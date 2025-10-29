@@ -40,7 +40,7 @@ const TeacherManagement = () => {
       const data = await adminService.getTeachers();
       setTeachers(data);
     } catch (error) {
-      showToast('Failed to load teachers', 'error');
+      eror('Failed to load teachers');
     } finally {
       setLoading(false);
     }
@@ -53,7 +53,7 @@ const TeacherManagement = () => {
       const data = await adminService.getDepartments();
       setDepartments(data);
     } catch (error) {
-      showToast('Failed to load departments', 'error');
+      eror('Failed to load departments');
     }
   };
 
@@ -63,7 +63,7 @@ const TeacherManagement = () => {
       const data = await adminService.getAllSubjects();
       setSubjects(data);
     } catch (error) {
-      showToast('Failed to load subjects', 'error');
+      eror('Failed to load subjects');
     }
   };
 
