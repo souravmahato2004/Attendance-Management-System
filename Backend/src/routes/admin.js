@@ -259,6 +259,21 @@ router.delete('/unassignSubject/:assignmentId', async (req, res) => {
 });
 
 // GET all departments
+router.get('/programs', async (req, res) => {
+  try {
+    const result = await db.query('SELECT program_id, program_name FROM programs ORDER BY program_id');
+    const programs = result.rows.map(row => ({
+      id: row.program_id,
+      name: row.program_name
+    }));
+    res.status(200).json(programs);
+  } catch (err) {
+    console.error('Error fetching programs:', err);
+    res.status(500).json({ message: 'Failed to fetch programs' });
+  }
+});
+
+// GET all departments
 router.get('/departments', async (req, res) => {
   try {
     const result = await db.query('SELECT department_id, department_name FROM departments ORDER BY department_id');
@@ -285,6 +300,120 @@ router.get('/subjects', async (req, res) => {
   } catch (err) {
     console.error('Error fetching subjects:', err);
     res.status(500).json({ message: 'Failed to fetch subjects' });
+  }
+});
+
+// --- NEW ROUTE ---
+// GET subjects for a specific course (by program, dept, sem)
+// Corresponds to: getSubjectsByCourse
+router.get('/subjects-by-course', async (req, res) => {
+  const { program, dept, sem } = req.query;
+
+  if (!program || !dept || !sem) {
+    return res.status(400).json({ message: 'Program, department, and semester query parameters are required.' });
+  }
+
+  try {
+    // 1. Find the course_id from the selection
+    const courseResult = await db.query(
+      'SELECT course_id FROM courses WHERE program_id = $1 AND department_id = $2 AND semester = $3',
+      [program, dept, sem]
+    );
+
+    if (courseResult.rows.length === 0) {
+      // No course found for this combination, return an empty array
+      return res.status(200).json([]);
+    }
+    const courseId = courseResult.rows[0].course_id;
+
+    // 2. Find all subjects for that course_id
+    const subjectsResult = await db.query(
+      'SELECT subject_id, subject_name FROM subjects WHERE course_id = $1 ORDER BY subject_name',
+      [courseId]
+    );
+
+    res.status(200).json(subjectsResult.rows);
+
+  } catch (err) {
+    console.error('Error fetching subjects by course:', err);
+    res.status(500).json({ message: 'Failed to fetch subjects.' });
+  }
+});
+
+// --- NEW ROUTE ---
+// ADD a new subject and assign it to a course
+// Corresponds to: addSubjectToCourse
+router.post('/subjects-to-course', async (req, res) => {
+  const { subject_name, program_id, department_id, semester } = req.body;
+
+  if (!subject_name || !program_id || !department_id || !semester) {
+    return res.status(400).json({ message: 'Subject name, program_id, department_id, and semester are required.' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Find the course_id
+    const courseResult = await client.query(
+      'SELECT course_id FROM courses WHERE program_id = $1 AND department_id = $2 AND semester = $3',
+      [program_id, department_id, semester]
+    );
+
+    if (courseResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'The selected course (program/dept/sem) was not found.' });
+    }
+    const courseId = courseResult.rows[0].course_id;
+
+    // 2. Insert the new subject with the found course_id
+    const newSubjectResult = await client.query(
+      'INSERT INTO subjects (subject_name, course_id) VALUES ($1, $2) RETURNING subject_id, subject_name',
+      [subject_name, courseId]
+    );
+
+    await client.query('COMMIT');
+    
+    // 3. Return the newly created subject object
+    res.status(201).json(newSubjectResult.rows[0]);
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    // Check for unique subject name violation (if you have one)
+    if (err.code === '23505') {
+        return res.status(409).json({ message: 'A subject with this name may already exist.' });
+    }
+    console.error('Error adding subject to course:', err);
+    res.status(500).json({ message: 'Failed to add subject.' });
+  } finally {
+    client.release();
+  }
+});
+
+
+// --- NEW ROUTE ---
+// DELETE a subject by its ID
+// Corresponds to: removeSubject
+router.delete('/subjects/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleteResult = await db.query(
+      'DELETE FROM subjects WHERE subject_id = $1',
+      [id]
+    );
+
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ message: 'Subject not found.' });
+    }
+    
+    res.status(200).json({ success: true, message: 'Subject deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting subject:', err);
+    // This catches if you try to delete a subject that a teacher is assigned to
+    if (err.code === '23503') { // foreign_key_violation
+      return res.status(409).json({ message: 'Cannot delete subject. It is currently assigned to one or more teachers. Please unassign it first.' });
+    }
+    res.status(500).json({ message: 'Failed to delete subject.' });
   }
 });
 

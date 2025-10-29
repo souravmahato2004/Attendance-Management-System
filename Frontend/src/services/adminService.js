@@ -244,6 +244,80 @@ export const adminService = {
     }
   },
 
+  // GETS ALL PROGRAMS
+  getPrograms: async () => {
+    const apiUrl = `${API_URL}/programs`; // Assumes new backend route
+    try {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch programs.');
+      }
+      return data; // Returns [{id, name}, ...]
+    } catch (error) {
+      throw error;
+    }
+  },
+
+
+  // NEW: GET SUBJECTS FOR A SPECIFIC COURSE
+  getSubjectsByCourse: async (program_id, department_id, semester) => {
+    const params = new URLSearchParams({
+      program: program_id,
+      dept: department_id,
+      sem: semester
+    });
+    const apiUrl = `${API_URL}/subjects-by-course?${params.toString()}`;
+
+    try {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch subjects for this course.');
+      }
+      return data; // Returns [{subject_id, subject_name}, ...]
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // NEW: ADD A SUBJECT TO A COURSE
+  addSubjectToCourse: async (subjectData) => {
+    // subjectData = { subject_name, program_id, department_id, semester }
+    const apiUrl = `${API_URL}/subjects-to-course`;
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subjectData)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to add subject.');
+      }
+      return data; // Returns new subject { subject_id, subject_name }
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // NEW: REMOVE A SUBJECT BY ITS ID
+  removeSubject: async (subject_id) => {
+    const apiUrl = `${API_URL}/subjects/${subject_id}`;
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to remove subject.');
+      }
+      return data; // Returns { success: true, ... }
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Get students by program
   getStudentsByProgram: async (programName) => {
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -262,40 +336,6 @@ export const adminService = {
       success: true,
       message: 'Teacher subjects updated successfully',
       subjects: subjects
-    };
-  },
-
-  // Get all subjects for a program, department and semester
-  getSubjectsForProgram: async (program, semester, department, programDeptSemSubjects) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Check if department-specific subjects exist, otherwise fall back to program-semester
-    const deptSubjects = programDeptSemSubjects?.[program]?.[department]?.[semester];
-    
-    return deptSubjects || [];
-  },
-
-  // Add subject to program-department-semester
-  addSubjectToProgram: async (program, semester, subject, department) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // In real implementation, this would update the database
-    return {
-      success: true,
-      message: 'Subject added successfully',
-      subjects: [subject] // This will be updated by the context
-    };
-  },
-
-  // Remove subject from program-department-semester
-  removeSubjectFromProgram: async (program, semester, subject, department) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // In real implementation, this would update the database
-    return {
-      success: true,
-      message: 'Subject removed successfully',
-      subjects: [] // This will be updated by the context
     };
   },
 
@@ -357,16 +397,6 @@ export const adminService = {
     return {
       success: true,
       message: 'Monthly report generated successfully'
-    };
-  },
-
-  // Get all programs and semesters
-  getProgramsAndSemesters: async (programs, semesters) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return {
-      programs: programs,
-      semesters: semesters
     };
   },
 
