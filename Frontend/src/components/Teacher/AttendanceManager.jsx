@@ -1,210 +1,251 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Save, Filter, Download, RefreshCw, UserCheck, Users } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, Save, Filter, RefreshCw, UserCheck, Users } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+
+// 1. Define attendance status locally
+const ATTENDANCE_STATUS = {
+  PRESENT: 'present',
+  ABSENT: 'absent',
+  LATE: 'late'
+};
 
 const AttendanceManager = ({ onStatsUpdate }) => {
   const { user } = useAuth();
-  const { programs, departments, semesters, attendanceStatus } = useApp();
+  const { success, eror } = useToast();
+
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
-  const [program, setProgram] = useState('B.Tech');
-  const [department, setDepartment] = useState('CSE');
-  const [semester, setSemester] = useState('Semester 3');
+  
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
+  
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
+  // useEffect to load teacher's subjects
   useEffect(() => {
     const init = async () => {
-      // Prefer subjects from logged-in user if present; fallback to service
-      if (user?.subjects?.length) {
-        setSubjects(user.subjects);
-        setSelectedSubject(user.subjects[0]);
-      } else {
-        const subs = await teacherService.getTeacherSubjects(user?.id);
-        setSubjects(subs);
-        setSelectedSubject(subs[0] || '');
+      if (user?.teacher_id) {
+        let subjectData = [];
+        if (user.subjects?.length) {
+          subjectData = user.subjects;
+        } else {
+          subjectData = await teacherService.getTeacherSubjects(user.teacher_id);
+        }
+        setSubjects(subjectData);
+        setSelectedSubject(''); // Default to no subject selected
       }
     };
-    init();
-  }, []);
+    if (user) {
+      init();
+    }
+  }, [user]);
 
-  useEffect(() => {
-    if (!selectedSubject) return;
-    loadStudents();
-  }, [program, department, semester, selectedSubject]);
+  // updateStats function
+  const updateStats = useCallback((attendanceData, studentList) => {
+    const total = studentList.length;
 
-  useEffect(() => {
-    if (!selectedSubject) return;
-    loadAttendance();
-  }, [selectedDate, program, department, semester, selectedSubject]);
+    // Clear stats if no students
+    if (total === 0 && Object.keys(attendanceData).length === 0) {
+        if (onStatsUpdate) {
+            onStatsUpdate({ totalStudents: 0, presentToday: 0, absentToday: 0, lateToday: 0 });
+        }
+        return;
+    }
 
-  const loadStudents = async () => {
+    const present = Object.values(attendanceData).filter(s => s === ATTENDANCE_STATUS.PRESENT).length;
+    const absent = Object.values(attendanceData).filter(s => s === ATTENDANCE_STATUS.ABSENT).length;
+    const late = Object.values(attendanceData).filter(s => s === ATTENDANCE_STATUS.LATE).length;
+    
+    if (onStatsUpdate) {
+      onStatsUpdate({
+        totalStudents: total,
+        presentToday: present,
+        absentToday: absent,
+        lateToday: late
+      });
+    }
+  }, [onStatsUpdate]);
+
+  // loadStudents function
+  const loadStudents = useCallback(async () => {
+    if (!selectedSubject) {
+      setStudents([]);
+      return [];
+    }
+    
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
-      const data = await teacherService.getStudents(selectedSubject, { program, department, semester });
+      const data = await teacherService.getStudentsBySubject(selectedSubject);
       setStudents(data);
-    } catch (error) {
-      setError(error.message);
+      return data;
+    } catch (err) {
+      setError(err.message);
+      eror(`Failed to load students: ${err.message}`);
+      return [];
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSubject, eror]);
 
-  const loadAttendance = async () => {
-    if (students.length === 0) return;
-
-    try {
-      const data = await teacherService.getAttendance(selectedDate, selectedSubject, { program, department, semester }, attendanceStatus);
-      setAttendance(data);
-      updateStats(data);
-    } catch (error) {
-      console.error('Error loading attendance:', error);
-      // Set default attendance for new dates
-      const defaultAttendance = {};
-      students.forEach(student => {
-        defaultAttendance[student.id] = attendanceStatus.PRESENT;
-      });
-      setAttendance(defaultAttendance);
-      updateStats(defaultAttendance);
+  // --- CHANGED ---
+  // loadAttendance function (no longer defaults to "Present")
+  const loadAttendance = useCallback(async (studentList) => {
+    if (studentList.length === 0) {
+      setAttendance({});
+      updateStats({}, []);
+      return;
     }
-  };
 
-  const updateStats = (attendanceData) => {
-    const present = Object.values(attendanceData).filter(status => status === attendanceStatus.PRESENT).length;
-    const absent = Object.values(attendanceData).filter(status => status === attendanceStatus.ABSENT).length;
-    const late = Object.values(attendanceData).filter(status => status === attendanceStatus.LATE).length;
-    
-    const stats = {
-      totalStudents: students.length,
-      presentToday: present,
-      absentToday: absent,
-      lateToday: late
-    };
-
-    onStatsUpdate(stats);
-  };
-
-  const handleAttendanceChange = (studentId, status) => {
-    const newAttendance = { ...attendance, [studentId]: status };
-    setAttendance(newAttendance);
-    updateStats(newAttendance);
-  };
-
-  const saveAttendance = async () => {
     try {
-      setSaving(true);
-      setError('');
-      setSuccess('');
+      const data = await teacherService.getAttendance(selectedSubject, selectedDate);
+      // Convert array from DB into the attendance map { student_id: status }
+      const attendanceMap = data.reduce((acc, record) => {
+        acc[record.student_id] = record.status;
+        return acc;
+      }, {});
+
+      // --- REMOVED DEFAULT LOGIC ---
+      // We no longer loop and set defaults.
+      // If a student is not in the map, they will have no status selected.
       
-      await teacherService.saveAttendance(selectedDate, selectedSubject, attendance, { program, department, semester });
-      setSuccess('Attendance saved successfully!');
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000);
+      setAttendance(attendanceMap);
+      updateStats(attendanceMap, studentList);
+
     } catch (error) {
-      setError(error.message);
+      // No records found, so create an EMPTY map
+      const defaultAttendance = {}; // <--- CHANGED FROM "ALL PRESENT"
+      setAttendance(defaultAttendance);
+      updateStats(defaultAttendance, studentList);
+    }
+  }, [selectedSubject, selectedDate, updateStats]);
+
+  // --- CHANGED ---
+  // Chained useEffects to load data in order
+  useEffect(() => {
+    // If no subject is selected, clear everything.
+    if (!selectedSubject) {
+      setStudents([]);
+      setAttendance({});
+      updateStats({}, []); // Also clear stats
+      return;
+    }
+
+    // If a subject IS selected, load students and then attendance
+    loadStudents().then(studentList => {
+      if (studentList) {
+        loadAttendance(studentList);
+      }
+    });
+  }, [selectedSubject, selectedDate, loadStudents, loadAttendance, updateStats]); // Added updateStats
+
+  // saveAttendance function
+  const saveAttendance = async () => {
+    if (!selectedSubject || students.length === 0) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      // Convert map to array, but *only include students who have a status*
+      const attendanceData = Object.keys(attendance)
+        .filter(studentId => attendance[studentId]) // Filter out null/undefined status
+        .map(studentId => ({
+          student_id: studentId,
+          status: attendance[studentId]
+        }));
+      
+      // If no one was marked, don't send an empty array
+      if (attendanceData.length === 0) {
+        eror("No attendance data to save. Please mark at least one student.");
+        setSaving(false);
+        return;
+      }
+
+      await teacherService.saveAttendance(
+        selectedSubject,
+        selectedDate,
+        attendanceData,
+        user.teacher_id
+      );
+      
+      success('Attendance saved successfully!');
+    } catch (err) {
+      setError(err.message);
+      eror(`Failed to save attendance: ${err.message}`);
     } finally {
       setSaving(false);
     }
   };
 
+  // handleAttendanceChange function
+  const handleAttendanceChange = (studentId, status) => {
+    // NEW: Allow un-checking by clicking the same button
+    const newStatus = attendance[studentId] === status ? null : status;
+    const newAttendance = { ...attendance, [studentId]: newStatus };
+    
+    setAttendance(newAttendance);
+    updateStats(newAttendance, students);
+  };
+
+  // markAllPresent function
   const markAllPresent = () => {
     const allPresent = {};
     students.forEach(student => {
-      allPresent[student.id] = attendanceStatus.PRESENT;
+      allPresent[student.student_id] = ATTENDANCE_STATUS.PRESENT;
     });
     setAttendance(allPresent);
-    updateStats(allPresent);
+    updateStats(allPresent, students);
   };
 
+  // getStatusColor function
   const getStatusColor = (status) => {
     switch (status) {
-      case attendanceStatus.PRESENT:
+      case ATTENDANCE_STATUS.PRESENT:
         return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
-      case attendanceStatus.ABSENT:
+      case ATTENDANCE_STATUS.ABSENT:
         return 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200';
-      case attendanceStatus.LATE:
+      case ATTENDANCE_STATUS.LATE:
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
     }
   };
 
+  // getAttendanceStats function
   const getAttendanceStats = () => {
-    const present = Object.values(attendance).filter(status => status === attendanceStatus.PRESENT).length;
-    const absent = Object.values(attendance).filter(status => status === attendanceStatus.ABSENT).length;
-    const late = Object.values(attendance).filter(status => status === attendanceStatus.LATE).length;
+    const present = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.PRESENT).length;
+    const absent = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.ABSENT).length;
+    const late = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.LATE).length;
     const total = students.length;
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-
+    const percentage = (total - absent) > 0 ? Math.round(((total - absent) / total) * 100) : 0; // Present + Late
     return { present, absent, late, total, percentage };
   };
 
   const stats = getAttendanceStats();
 
-  if (loading && students.length === 0) {
-    return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
-        </div>
-      </div>
-    );
+  if (loading && students.length === 0 && selectedSubject) {
+     return (
+       <div className="p-6">
+         <div className="flex justify-center items-center h-64">
+           <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+         </div>
+       </div>
+     );
   }
 
+  // --- JSX ---
   return (
     <div className="p-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
         <h2 className="text-2xl font-bold text-gray-900">Attendance Management</h2>
         
         <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              value={program}
-              onChange={(e) => setProgram(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              {programs.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
           
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              value={semester}
-              onChange={(e) => setSemester(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              {semesters.map(sem => (
-                <option key={sem} value={sem}>{sem}</option>
-              ))}
-            </select>
-          </div>
-          
-
           <div className="flex items-center space-x-2">
             <Filter className="h-5 w-5 text-gray-400" />
             <select
@@ -212,8 +253,11 @@ const AttendanceManager = ({ onStatsUpdate }) => {
               onChange={(e) => setSelectedSubject(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
+              <option value="">Select a Subject</option>
               {subjects.map(sub => (
-                <option key={sub} value={sub}>{sub}</option>
+                <option key={sub.subject_id} value={sub.subject_id}>
+                  {sub.subject_name} - ({sub.program_name}, {sub.department_name}, Sem {sub.semester})
+                </option>
               ))}
             </select>
           </div>
@@ -246,7 +290,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
         </div>
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <div className="text-2xl font-bold text-blue-800">{stats.percentage}%</div>
-          <div className="text-sm text-blue-600">Present Rate</div>
+          <div className="text-sm text-blue-600">Attendance Rate</div>
         </div>
       </div>
 
@@ -275,8 +319,8 @@ const AttendanceManager = ({ onStatsUpdate }) => {
         </button>
 
         <button
-          onClick={loadAttendance}
-          disabled={loading}
+          onClick={() => loadStudents().then(loadAttendance)}
+          disabled={loading || !selectedSubject}
           className="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors duration-300 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -287,30 +331,12 @@ const AttendanceManager = ({ onStatsUpdate }) => {
       {/* Messages */}
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md mb-6 flex items-center space-x-3">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </div>
           <div>
             <p className="text-sm font-medium">{error}</p>
           </div>
         </div>
       )}
-
-      {success && (
-        <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 rounded-md mb-6 flex items-center space-x-3">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium">{success}</p>
-          </div>
-        </div>
-      )}
-
+      
       {/* Attendance Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
@@ -329,9 +355,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {students.map(student => (
-              <tr key={student.id} className="hover:bg-gray-50 transition-colors duration-150">
+              <tr key={student.student_id} className="hover:bg-gray-50 transition-colors duration-150">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {student.rollNumber}
+                  {student.roll_number}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -343,21 +369,21 @@ const AttendanceManager = ({ onStatsUpdate }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   <div className="flex justify-center space-x-2">
-                    {Object.values(attendanceStatus).map(status => (
+                    {Object.values(ATTENDANCE_STATUS).map(status => (
                       <label
                         key={status}
                         className={`inline-flex items-center px-3 py-2 rounded-full text-xs font-medium border cursor-pointer transition-all duration-200 ${
-                          attendance[student.id] === status
+                          attendance[student.student_id] === status
                             ? getStatusColor(status)
                             : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                         }`}
                       >
                         <input
                           type="radio"
-                          name={`attendance-${student.id}`}
+                          name={`attendance-${student.student_id}`}
                           value={status}
-                          checked={attendance[student.id] === status}
-                          onChange={() => handleAttendanceChange(student.id, status)}
+                          checked={attendance[student.student_id] === status}
+                          onChange={() => handleAttendanceChange(student.student_id, status)}
                           className="sr-only"
                         />
                         <span className="capitalize">{status}</span>
@@ -374,7 +400,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
       {students.length === 0 && !loading && (
         <div className="text-center py-12">
           <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <div className="text-gray-500">No students found for the selected program.</div>
+          <div className="text-gray-500">
+            {selectedSubject ? 'No students found for this subject.' : 'Please select a subject to begin.'}
+          </div>
         </div>
       )}
     </div>

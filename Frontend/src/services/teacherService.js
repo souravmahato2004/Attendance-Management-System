@@ -1,7 +1,9 @@
+const APIURL='http://localhost:3001/api/teacher';
+
 export const teacherService = {
   // Mock login
   login: async (credentials) => {
-    const apiUrl = 'http://localhost:3001/api/teacher/login';
+    const apiUrl = `${APIURL}/login`;
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -19,7 +21,7 @@ export const teacherService = {
       }
       return {
         success: true,
-        user: data.teacher
+        user: data.user
       };
 
     } catch (error) {
@@ -27,72 +29,133 @@ export const teacherService = {
     }
   },
 
-  // Get subjects handled by this teacher (college use-case)
+  // Get all assigned subjects for a specific teacher
   getTeacherSubjects: async (teacherId) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    // Return the same as login for mock purposes
-    return ['Data Structures', 'Algorithms'];
-  },
-
-  // Get dashboard stats
-  getDashboardStats: async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return {
-      totalStudents: 35,
-      presentToday: 28,
-      absentToday: 5,
-      lateToday: 2,
-      recentAttendance: [
-        { date: '2024-09-08', present: 30, absent: 3, late: 2 },
-        { date: '2024-09-07', present: 32, absent: 2, late: 1 },
-      ]
-    };
-  },
-
-  // Get students for a subject
-  getStudents: async (subject, filters = {}) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // This calls the backend route: GET /api/teacher/:id/subjects
+    const apiUrl = `http://localhost:3001/api/teacher/${teacherId}/subjects`;
     
-    const { program = 'B.Tech', department = 'CSE', semester = 'Semester 3' } = filters;
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header if required
+        },
+      });
 
-    return [
-      { id: 1, name: 'Alice Johnson', rollNumber: '2023001', subject, program, department, semester },
-      { id: 2, name: 'Bob Smith', rollNumber: '2023002', subject, program, department, semester },
-      { id: 3, name: 'Carol Davis', rollNumber: '2023003', subject, program, department, semester },
-      { id: 4, name: 'David Wilson', rollNumber: '2023004', subject, program, department, semester },
-      { id: 5, name: 'Emma Brown', rollNumber: '2023005', subject, program, department, semester },
-      { id: 6, name: 'Frank Miller', rollNumber: '2023006', subject, program, department, semester }
-    ];
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch subjects.');
+      }
+
+      // Returns array: [{ subject_id, subject_name, semester, ... }, ...]
+      return data; 
+      
+    } catch (error) {
+      // If it fails, return an empty array so the UI doesn't crash
+      console.error('Error fetching teacher subjects:', error);
+      return []; 
+    }
   },
 
-  // Get attendance for a specific date
-  getAttendance: async (date, subject, filters = {}, attendanceStatus) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
+  // Get dashboard stats for a specific teacher
+  getDashboardStats: async (teacherId) => {
+    // Return empty stats if there is no teacherId
+    if (!teacherId) {
+      return { totalStudents: 0, presentToday: 0, absentToday: 0, lateToday: 0, recentAttendance: [] };
+    }
     
-    // Mock attendance data
-    const mockAttendance = {
-      1: attendanceStatus.PRESENT,
-      2: attendanceStatus.ABSENT,
-      3: attendanceStatus.PRESENT,
-      4: attendanceStatus.LATE,
-      5: attendanceStatus.PRESENT,
-      6: attendanceStatus.PRESENT
+    // --- 1. GET LOCAL DATE ---
+    // This correctly gets today's date in your user's timezone (IST)
+    const getLocalDate = () => {
+      const todayDate = new Date();
+      const year = todayDate.getFullYear();
+      const month = (todayDate.getMonth() + 1).toString().padStart(2, '0'); // (0-11) + 1
+      const day = todayDate.getDate().toString().padStart(2, '0');
+      return `${year}-${month}-${day}`; // e.g., "2025-10-31"
     };
     
-    return mockAttendance;
+    const today = getLocalDate();
+    // --- END ---
+
+    // 2. Add 'today' to the API query
+    const apiUrl = `http://localhost:3001/api/teacher/dashboard-stats?teacherId=${teacherId}&today=${today}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch dashboard stats.');
+      }
+      return data;
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      return { totalStudents: 0, presentToday: 0, absentToday: 0, lateToday: 0, recentAttendance: [] };
+    }
   },
 
-  // Save attendance
-  saveAttendance: async (date, subject, attendanceData, filters = {}) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Saving attendance:', { date, subject, attendanceData, filters });
-    
-    return {
-      success: true,
-      message: 'Attendance saved successfully',
-      savedAt: new Date().toISOString()
-    };
+  // NEW: Get students for a specific subject
+  getStudentsBySubject: async (subjectId) => {
+    // This calls GET /api/teacher/students-by-subject?subjectId=...
+    const apiUrl = `http://localhost:3001/api/teacher/students-by-subject?subjectId=${subjectId}`;
+    try {
+      const response = await fetch(apiUrl, { /* ...headers... */ });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data; // Expects [{ student_id, roll_number, name }]
+    } catch (error) {
+      console.error("Failed to get students:", error);
+      throw error;
+    }
+  },
+
+  // NEW: Get attendance for a specific class on a specific date
+  getAttendance: async (subjectId, date) => {
+    // This calls GET /api/teacher/attendance?subjectId=...&date=...
+    const params = new URLSearchParams({ subjectId, date });
+    const apiUrl = `http://localhost:3001/api/teacher/attendance?${params.toString()}`;
+    try {
+      const response = await fetch(apiUrl, { /* ...headers... */ });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data; // Expects [{ student_id, status }]
+    } catch (error) {
+      console.error("Failed to get attendance:", error);
+      throw error;
+    }
+  },
+
+  // NEW: Save attendance for a class
+  saveAttendance: async (subjectId, date, attendanceData, teacherId) => {
+    // This calls POST /api/teacher/attendance
+    const apiUrl = `http://localhost:3001/api/teacher/attendance`;
+    try {
+      const payload = {
+        subjectId,
+        date,
+        teacherId,
+        attendance: attendanceData // [{ student_id, status }, ...]
+      };
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', /* ...auth... */ },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      console.error("Failed to save attendance:", error);
+      throw error;
+    }
   },
 
   // Get attendance history
@@ -115,5 +178,31 @@ export const teacherService = {
     }
     
     return history;
-  }
+  },
+
+  // NEW: Get attendance report
+  getAttendanceReport: async (subjectId, startDate, endDate) => {
+    const params = new URLSearchParams({ subjectId, startDate, endDate });
+    const apiUrl = `http://localhost:3001/api/teacher/attendance-report?${params.toString()}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch report.');
+      }
+      // Returns [{ student_id, roll_number, name, total_classes, total_present, ... }, ...]
+      return data;
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      throw error;
+    }
+  },
+
 };

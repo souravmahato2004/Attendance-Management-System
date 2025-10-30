@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, BookOpen, Save, X, Search } from 'lucide-react';
-// import { useApp } from '../../contexts/AppContext'; // 1. REMOVED useApp
+// import { useApp } from '../../contexts/AppContext'; // REMOVED
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const SubjectManagement = () => {
-  // 2. State to hold data (as objects)
+  // State to hold data (as objects)
   const [programs, setPrograms] = useState([]);
   const [semesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]); // Static list
   const [departments, setDepartments] = useState([]);
@@ -21,28 +21,25 @@ const SubjectManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // 3. FIXED typo: eror -> error
+  // 1. CORRECTED: Using 'eror' as defined in your context
   const { success, eror } = useToast();
 
   // --- Effects ---
 
-  // 4. Load initial data on mount
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Fetch subjects whenever the selection changes
   useEffect(() => {
     if (selectedProgram && selectedDepartment && selectedSemester) {
       loadSubjectsForCourse();
     } else {
-      setCurrentSubjects([]); // Clear list if selection is incomplete
+      setCurrentSubjects([]);
     }
   }, [selectedProgram, selectedDepartment, selectedSemester]);
 
   // --- Data Fetching Functions ---
 
-  // 5. Fetches all dropdown data from adminService
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -57,14 +54,13 @@ const SubjectManagement = () => {
       setAllSubjects(allSubjectsData);
 
     } catch (err) {
+      // 2. CORRECTED: Using 'eror'
       eror(`Failed to load initial data: ${err.message}`);
     } finally {
-      // 6. FIXED: Set loading to false
       setLoading(false);
     }
   };
 
-  // 7. Fetches subjects for the specific course
   const loadSubjectsForCourse = async () => {
     try {
       const subjects = await adminService.getSubjectsByCourse(
@@ -74,21 +70,23 @@ const SubjectManagement = () => {
       );
       setCurrentSubjects(subjects); // Expects [{ subject_id, subject_name }]
     } catch (err) {
+      // 3. CORRECTED: Using 'eror'
       eror(`Failed to load subjects: ${err.message}`);
     }
   };
 
   // --- Event Handlers ---
 
-  // 8. Add a new subject to the selected course
   const handleAddSubject = async () => {
     const subjectName = newSubject.trim();
     if (!subjectName) {
+      // 4. CORRECTED: Using 'eror'
       eror('Please enter a subject name');
       return;
     }
 
     if (currentSubjects.some(s => s.subject_name.toLowerCase() === subjectName.toLowerCase())) {
+      // 5. CORRECTED: Using 'eror'
       eror('Subject already exists for this course');
       return;
     }
@@ -101,10 +99,8 @@ const SubjectManagement = () => {
         semester: selectedSemester
       };
       
-      // Calls the REAL adminService function
       const addedSubject = await adminService.addSubjectToCourse(newSubjectData);
 
-      // Add to both lists
       setCurrentSubjects(prev => [...prev, addedSubject]);
       setAllSubjects(prev => [...prev, { id: addedSubject.subject_id, name: addedSubject.subject_name }]); 
       
@@ -113,33 +109,31 @@ const SubjectManagement = () => {
       success('Subject added successfully');
 
     } catch (err) {
+      // 6. CORRECTED: Using 'eror'
       eror(`Failed to add subject: ${err.message}`);
     }
   };
 
-  // 9. Remove a subject by its unique ID
   const handleRemoveSubject = async (subjectToRemove) => {
     if (window.confirm(`Are you sure you want to remove "${subjectToRemove.subject_name}"?`)) {
       try {
         await adminService.removeSubject(subjectToRemove.subject_id);
         
-        // Remove from current list
         setCurrentSubjects(prev => 
           prev.filter(s => s.subject_id !== subjectToRemove.subject_id)
         );
-        // Remove from master list
         setAllSubjects(prev => 
           prev.filter(s => s.id !== subjectToRemove.subject_id)
         );
         
         success('Subject removed successfully');
       } catch (err) {
+        // 7. CORRECTED: Using 'eror'
         eror(`Failed to remove subject: ${err.message}`);
       }
     }
   };
 
-  // 10. Filter list of objects
   const filteredSubjects = allSubjects.filter(subject =>
     subject.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -166,7 +160,7 @@ const SubjectManagement = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Program, Department & Semester</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           
-          {/* 11. Program Dropdown (handles objects) */}
+          {/* Program Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
             <select
@@ -185,7 +179,7 @@ const SubjectManagement = () => {
             </select>
           </div>
 
-          {/* 12. Department Dropdown (handles objects) */}
+          {/* Department Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
             <select
@@ -204,7 +198,7 @@ const SubjectManagement = () => {
             </select>
           </div>
 
-          {/* 13. Semester Dropdown (static list) */}
+          {/* Semester Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
             <select
@@ -222,10 +216,10 @@ const SubjectManagement = () => {
         </div>
       </div>
 
-      {/* This section only shows after a valid selection */}
+      {/* This section contains the "add subject" functionality */}
       {selectedProgram && selectedDepartment && selectedSemester && (
         <>
-          {/* 14. Current Subjects List (handles objects) */}
+          {/* Current Subjects List */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -245,12 +239,12 @@ const SubjectManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {currentSubjects.map(subject => (
                   <div
-                    key={subject.subject_id} // Use unique ID
+                    key={subject.subject_id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
                   >
                     <span className="text-sm font-medium text-gray-900">{subject.subject_name}</span>
                     <button
-                      onClick={() => handleRemoveSubject(subject)} // Pass the whole object
+                      onClick={() => handleRemoveSubject(subject)}
                       className="text-red-600 hover:text-red-800 ml-2"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -261,11 +255,10 @@ const SubjectManagement = () => {
             )}
           </div>
 
-          {/* Add New Subject */}
+          {/* THIS IS THE SECTION YOU ASKED FOR: Add New Subject */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Subject</h3>
             
-            {/* 15. Search/filter list (handles objects) */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Search all existing subjects
@@ -282,7 +275,6 @@ const SubjectManagement = () => {
               </div>
             </div>
 
-            {/* 16. Search results (handles objects) */}
             {searchTerm && filteredSubjects.length > 0 && (
               <div className="mb-4">
                 <p className="text-sm font-medium text-gray-700 mb-2">Available subjects:</p>
@@ -300,7 +292,7 @@ const SubjectManagement = () => {
               </div>
             )}
 
-            {/* Add subject form */}
+            {/* This is the input box and button to add */}
             <div className="flex space-x-3">
               <div className="flex-1">
                 <input
@@ -323,7 +315,7 @@ const SubjectManagement = () => {
         </>
       )}
 
-      {/* 17. All Subjects Overview (handles objects) */}
+      {/* All Subjects Overview */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">All Available Subjects</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">

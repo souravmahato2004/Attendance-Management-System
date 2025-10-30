@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '../Common/Header';
 import StatCard from '../Common/StatCard';
 import AttendanceManager from './AttendanceManager';
-import { Users, UserCheck, UserX, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { Users, UserCheck, UserX, Clock, Calendar, TrendingUp, BarChart } from 'lucide-react'; // Added BarChart
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
+
+// --- NEW COMPONENTS (Create these files) ---
+import StudentList from './StudentList';
+import AttendanceReports from './AttendanceReports';
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
@@ -16,6 +20,9 @@ const TeacherDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [assignedSubjects, setAssignedSubjects] = useState([]);
+  
+  // --- UPDATED: Added 'students' and 'reports' tabs ---
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -25,7 +32,9 @@ const TeacherDashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await teacherService.getDashboardStats();
+      const data = await teacherService.getDashboardStats(user.teacher_id); 
+      const subjects = await teacherService.getTeacherSubjects(user.teacher_id);
+      setAssignedSubjects(subjects);
       setStats(data);
     } catch (error) {
       setError(error.message);
@@ -52,13 +61,15 @@ const TeacherDashboard = () => {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-6 text-white">
-          <h2 className="text-2xl font-bold mb-2">Welcome back, {user.name}!</h2>
-          {user.subjects?.length ? (
-            <p className="text-green-100">Subjects: {user.subjects.join(', ')}</p>
-          ) : (
-            <p className="text-green-100">Subjects: -</p>
-          )}
-          <p className="text-green-100 text-sm mt-2">
+          <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.name || 'Teacher'}!</h2>
+          
+          <p className="text-green-100">
+            Subjects: {assignedSubjects.length 
+              ? assignedSubjects.map(subject => subject.subject_name).join(', ') 
+              : 'No subjects assigned'}
+          </p>
+          
+          <p className="text-white text-md font-bold mt-2">
             Today is {new Date().toLocaleDateString('en-US', { 
               weekday: 'long', 
               year: 'numeric', 
@@ -68,7 +79,7 @@ const TeacherDashboard = () => {
           </p>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* --- UPDATED: Navigation Tabs --- */}
         <div>
           <nav className="flex flex-wrap space-x-4 sm:space-x-8" aria-label="Tabs">
             <button
@@ -89,57 +100,50 @@ const TeacherDashboard = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Attendance Management
+              Attendance
+            </button>
+            {/* --- NEW TAB: Student List --- */}
+            <button
+              onClick={() => setActiveTab('students')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === 'students'
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Student List
+            </button>
+            {/* --- NEW TAB: Reports --- */}
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === 'reports'
+                  ? 'border-green-500 text-green-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              View Reports
             </button>
           </nav>
         </div>
 
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium">{error}</p>
-            </div>
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md">
+            <p className="text-sm font-medium">{error}</p>
           </div>
         )}
+
+        {/* --- UPDATED: Tab Content Rendering --- */}
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              <StatCard
-                title="Total Students"
-                value={stats.totalStudents}
-                icon={Users}
-                color="blue"
-                subtitle="Under your guidance"
-              />
-              <StatCard
-                title="Present Today"
-                value={stats.presentToday}
-                icon={UserCheck}
-                color="green"
-                subtitle="Students in course"
-              />
-              <StatCard
-                title="Absent Today"
-                value={stats.absentToday}
-                icon={UserX}
-                color="red"
-                subtitle="Students missing"
-              />
-              <StatCard
-                title="Late Today"
-                value={stats.lateToday}
-                icon={Clock}
-                color="yellow"
-                subtitle="Students late"
-              />
+              <StatCard title="Total Students" value={stats.totalStudents} icon={Users} color="blue"/>
+              <StatCard title="Present Today" value={stats.presentToday} icon={UserCheck} color="green" />
+              <StatCard title="Absent Today" value={stats.absentToday} icon={UserX} color="red" />
+              <StatCard title="Late Today" value={stats.lateToday} icon={Clock} color="yellow" />
             </div>
 
             {/* Recent Attendance Trends */}
@@ -150,16 +154,21 @@ const TeacherDashboard = () => {
               </div>
               
               <div className="space-y-4">
+                {/* Map over the recentAttendance array from the stats object */}
                 {(stats.recentAttendance || []).map((record, index) => (
                   <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-4">
                       <Calendar className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">
-                          {new Date(record.date).toLocaleDateString('en-US', { 
+                          {/* This tells the browser to treat the date string "2025-10-31" as
+                            midnight UTC, and then format it in UTC, ignoring your local timezone.
+                          */}
+                          {new Date(record.date + 'T00:00:00.000Z').toLocaleDateString('en-US', { 
                             weekday: 'long', 
                             month: 'short', 
-                            day: 'numeric' 
+                            day: 'numeric',
+                            timeZone: 'UTC' // <-- ADD THIS LINE
                           })}
                         </p>
                       </div>
@@ -171,6 +180,8 @@ const TeacherDashboard = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Show a message if no recent data exists */}
                 {(!stats.recentAttendance || stats.recentAttendance.length === 0) && (
                   <div className="text-center py-8 text-gray-500">
                     <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -180,7 +191,7 @@ const TeacherDashboard = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* --- UPDATED: Quick Actions --- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <button 
                 onClick={() => setActiveTab('attendance')}
@@ -197,10 +208,13 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-left group w-full">
+              <button 
+                onClick={() => setActiveTab('reports')} // <-- WIRED UP
+                className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-left group w-full"
+              >
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors duration-200">
-                    <TrendingUp className="h-8 w-8 text-blue-600" />
+                    <BarChart className="h-8 w-8 text-blue-600" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">View Reports</h4>
@@ -209,7 +223,10 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-left group w-full">
+              <button 
+                onClick={() => setActiveTab('students')} // <-- WIRED UP
+                className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-left group w-full"
+              >
                 <div className="flex items-center space-x-4">
                   <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors duration-200">
                     <Users className="h-8 w-8 text-purple-600" />
@@ -227,7 +244,25 @@ const TeacherDashboard = () => {
         {/* Attendance Tab */}
         {activeTab === 'attendance' && (
           <div className="bg-white rounded-xl shadow-lg">
-            <AttendanceManager onStatsUpdate={setStats} />
+            {/* Passing subjects from auth to the manager.
+                This assumes your AttendanceManager is set up to receive this prop.
+                If not, it will just use its own internal logic. 
+            */}
+            <AttendanceManager onStatsUpdate={setStats} teacherSubjects={user?.subjects} />
+          </div>
+        )}
+
+        {/* --- NEW TAB CONTENT: Student List --- */}
+        {activeTab === 'students' && (
+          <div className="bg-white rounded-xl shadow-lg">
+            <StudentList teacherId={user?.teacher_id} />
+          </div>
+        )}
+
+        {/* --- NEW TAB CONTENT: Reports --- */}
+        {activeTab === 'reports' && (
+          <div className="bg-white rounded-xl shadow-lg">
+            <AttendanceReports teacherId={user?.teacher_id} />
           </div>
         )}
       </main>

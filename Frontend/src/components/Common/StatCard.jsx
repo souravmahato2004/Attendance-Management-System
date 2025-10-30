@@ -5,7 +5,6 @@ const StatCard = ({
   color = 'blue', 
   trend, 
   subtitle,
-  onClick 
 }) => {
   const colorClasses = {
     blue: {
