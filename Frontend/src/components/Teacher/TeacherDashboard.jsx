@@ -26,12 +26,16 @@ const TeacherDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    // Only load dashboard data when the user is on the overview tab
+    // and the user object is available.
+    if (activeTab === 'overview' && user?.teacher_id) {
+      loadDashboardData();
+    }
+  }, [activeTab, user?.teacher_id]); // <-- Add dependencies
 
   const loadDashboardData = async () => {
     try {
-      setLoading(true);
+      // We don't set loading to true here, so it's a silent refresh
       const data = await teacherService.getDashboardStats(user.teacher_id); 
       const subjects = await teacherService.getTeacherSubjects(user.teacher_id);
       setAssignedSubjects(subjects);
@@ -39,7 +43,9 @@ const TeacherDashboard = () => {
     } catch (error) {
       setError(error.message);
     } finally {
-      setLoading(false);
+      // This will set loading to false after the *initial* load.
+      // On subsequent tab-switching loads, it does nothing, which is fine.
+      setLoading(false); 
     }
   };
 

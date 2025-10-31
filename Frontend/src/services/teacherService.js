@@ -159,26 +159,25 @@ export const teacherService = {
   },
 
   // Get attendance history
-  getAttendanceHistory: async (subject, startDate, endDate) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
+  // getAttendanceHistory: async (subject, startDate, endDate) => {
     
-    const history = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+  //   const history = [];
+  //   const start = new Date(startDate);
+  //   const end = new Date(endDate);
     
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      if (d.getDay() !== 0 && d.getDay() !== 6) { // Skip weekends
-        history.push({
-          date: d.toISOString().split('T')[0],
-          present: Math.floor(Math.random() * 5) + 28,
-          absent: Math.floor(Math.random() * 5) + 1,
-          late: Math.floor(Math.random() * 3)
-        });
-      }
-    }
+  //   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  //     if (d.getDay() !== 0 && d.getDay() !== 6) { // Skip weekends
+  //       history.push({
+  //         date: d.toISOString().split('T')[0],
+  //         present: Math.floor(Math.random() * 5) + 28,
+  //         absent: Math.floor(Math.random() * 5) + 1,
+  //         late: Math.floor(Math.random() * 3)
+  //       });
+  //     }
+  //   }
     
-    return history;
-  },
+  //   return history;
+  // },
 
   // NEW: Get attendance report
   getAttendanceReport: async (subjectId, startDate, endDate) => {
