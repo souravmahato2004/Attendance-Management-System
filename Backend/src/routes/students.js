@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
     res.status(200).json({ 
       success: true, 
       message: 'Logged in successfully!',
-      student: {
+      user: {
         ...studentData,
         role: 'student'
       }
@@ -141,7 +141,9 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// --- UPDATED ROUTE ---
 // GET subjects for a specific program, department, and semester
+// Now returns an array of objects (with IDs), not just strings.
 router.get('/subjects', async (req, res) => {
   const { program, department, semester } = req.query;
 
@@ -156,23 +158,131 @@ router.get('/subjects', async (req, res) => {
 
   try {
     const query = `
-      SELECT s.subject_name
+      SELECT s.subject_id, s.subject_name
       FROM public.subjects s
       JOIN public.courses c ON s.course_id = c.course_id
       JOIN public.programs p ON c.program_id = p.program_id
       JOIN public.departments d ON c.department_id = d.department_id
       WHERE p.program_name = $1
         AND d.department_name = $2
-        AND c.semester = $3;
+        AND c.semester = $3
+      ORDER BY s.subject_name;
     `;
     const subjectsResult = await db.query(query, [program, department, semesterNumber]);
 
-    const subjectNames = subjectsResult.rows.map(row => row.subject_name);
-    res.status(200).json(subjectNames);
+    // Send the full array of objects
+    res.status(200).json(subjectsResult.rows);
 
   } catch (err) {
     console.error('Error fetching subjects:', err);
     res.status(500).json({ message: 'An error occurred while fetching subjects.' });
+  }
+});
+
+// --- NEW ROUTE ---
+// GET dashboard stats for a student for a specific subject
+router.get('/dashboard-stats', async (req, res) => {
+  const { studentId, subjectId } = req.query;
+
+  if (!studentId || !subjectId) {
+    return res.status(400).json({ message: 'studentId and subjectId are required.' });
+  }
+
+  try {
+    const statsQuery = `
+      SELECT
+        COUNT(record_id) AS total_classes,
+        COUNT(record_id) FILTER (WHERE status = 'present') AS present_days,
+        COUNT(record_id) FILTER (WHERE status = 'absent') AS absent_days,
+        COUNT(record_id) FILTER (WHERE status = 'late') AS late_days
+      FROM
+        attendance_records
+      WHERE
+        student_id = $1 AND subject_id = $2
+    `;
+    
+    const statsResult = await db.query(statsQuery, [studentId, subjectId]);
+    
+    // Use a default stats object in case no records are found
+    const stats = statsResult.rows[0] || { total_classes: 0, present_days: 0, absent_days: 0, late_days: 0 };
+    
+    const totalDays = parseInt(stats.total_classes, 10);
+    const presentDays = parseInt(stats.present_days, 10);
+    const absentDays = parseInt(stats.absent_days, 10);
+    const lateDays = parseInt(stats.late_days, 10);
+    
+    const attendedDays = presentDays + lateDays;
+    const attendancePercentage = (totalDays > 0) ? Math.round((attendedDays / totalDays) * 100) : 0;
+
+    res.status(200).json({
+      totalDays,
+      presentDays,
+      absentDays,
+      lateDays,
+      attendancePercentage,
+      // Mocking these for now as they require complex queries
+      currentStreak: 5,
+      monthlyStats: {
+        September: { present: 18, absent: 3, late: 1 },
+        August: { present: 20, absent: 2, late: 0 }
+      }
+    });
+
+  } catch (err) {
+    console.error('Error fetching student dashboard stats:', err);
+    res.status(500).json({ message: 'Failed to fetch dashboard stats.' });
+  }
+});
+
+// --- NEW ROUTE ---
+// GET Monthly Attendance for a Student
+router.get('/monthly-attendance', async (req, res) => {
+  const { studentId, subjectId, year, month } = req.query;
+
+  if (!studentId || !subjectId || !year || !month) {
+    return res.status(400).json({ message: 'studentId, subjectId, year, and month are required.' });
+  }
+
+  // month is 0-indexed (0=Jan, 11=Dec), but Postgres is 1-indexed.
+  const monthNumber = parseInt(month, 10) + 1;
+  const yearNumber = parseInt(year, 10);
+
+  try {
+    const query = `
+      SELECT
+        attendance_date,
+        status,
+        -- Extract the day number from the date
+        EXTRACT(DAY FROM attendance_date) as day_number,
+        -- Get the 3-letter day name (e.g., 'Mon')
+        TO_CHAR(attendance_date, 'Dy') as day_name
+      FROM
+        attendance_records
+      WHERE
+        student_id = $1
+        AND subject_id = $2
+        AND EXTRACT(YEAR FROM attendance_date) = $3
+        AND EXTRACT(MONTH FROM attendance_date) = $4
+      ORDER BY
+        attendance_date;
+    `;
+    
+    const { rows } = await db.query(query, [studentId, subjectId, yearNumber, monthNumber]);
+
+    // Format the data for the frontend
+    const formattedData = rows.map(row => ({
+      date: new Date(row.attendance_date).toISOString().split('T')[0], // 'YYYY-MM-DD'
+      day: row.day_name,
+      dayNumber: parseInt(row.day_number, 10),
+      status: row.status,
+      subject: '' // Subject is already known, but keeping for compatibility
+    }));
+
+    res.status(200).json(formattedData);
+
+  } catch (err) {
+    console.error('Error fetching monthly attendance:', err);
+    res.status(500).json({ message: 'Failed to fetch monthly attendance.' });
   }
 });
 

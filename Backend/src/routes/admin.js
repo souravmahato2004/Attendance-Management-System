@@ -85,6 +85,151 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET all unique semesters
+router.get('/semesters', async (req, res) => {
+  try {
+    const result = await db.query('SELECT DISTINCT semester FROM courses ORDER BY semester');
+    const semesters = result.rows.map(row => row.semester); // Just send [1, 2, 3...]
+    res.status(200).json(semesters);
+  } catch (err) {
+    console.error('Error fetching semesters:', err);
+    res.status(500).json({ message: 'Failed to fetch semesters' });
+  }
+});
+
+// --- UPDATED ROUTE ---
+// GET data for the monthly admin report
+router.get('/report-data', async (req, res) => {
+  const { program_id, department_id, semester, month, year } = req.query;
+
+  if (!program_id || !department_id || !semester || !month || !year) {
+    return res.status(400).json({ message: 'All filter parameters are required.' });
+  }
+
+  const client = await db.connect();
+  try {
+    // 1. Get Course ID and Names
+    const courseQuery = `
+      SELECT c.course_id, p.program_name, d.department_name
+      FROM courses c
+      JOIN programs p ON c.program_id = p.program_id
+      JOIN departments d ON c.department_id = d.department_id
+      WHERE c.program_id = $1 AND c.department_id = $2 AND c.semester = $3;
+    `;
+    const courseResult = await client.query(courseQuery, [program_id, department_id, semester]);
+    
+    if (courseResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Course not found.' });
+    }
+    const { course_id, program_name, department_name } = courseResult.rows[0];
+
+    // 2. Get subjects
+    const subjectsResult = await client.query('SELECT subject_id, subject_name FROM subjects WHERE course_id = $1', [course_id]);
+    const subjectMap = new Map(subjectsResult.rows.map(s => [s.subject_id, s.subject_name]));
+    const subjectIds = Array.from(subjectMap.keys());
+
+    // 3. Get students
+    const studentsResult = await client.query('SELECT student_id FROM students WHERE program_id = $1 AND department_id = $2 AND semester = $3', [program_id, department_id, semester]);
+    const studentIds = studentsResult.rows.map(s => s.student_id);
+
+    if (subjectIds.length === 0 || studentIds.length === 0) {
+      return res.status(200).json({
+          studentInfo: { 'Program': program_name, 'Department': department_name, 'Semester': semester },
+          summary: { 'Error': 'No students or subjects found for this course.' },
+          tableData: []
+      });
+    }
+
+    // 4. Get attendance data
+    const monthNumber = parseInt(month, 10) + 1;
+    const attendanceQuery = `
+      SELECT
+        TO_CHAR(attendance_date, 'YYYY-MM-DD') as date_str,
+        TO_CHAR(attendance_date, 'Dy') as day_name,
+        subject_id,
+        status,
+        COUNT(record_id) as count
+      FROM attendance_records
+      WHERE 
+        subject_id = ANY($1::int[])
+        AND student_id = ANY($2::int[])
+        AND EXTRACT(MONTH FROM attendance_date) = $3
+        AND EXTRACT(YEAR FROM attendance_date) = $4
+      GROUP BY attendance_date, subject_id, status
+      ORDER BY attendance_date;
+    `;
+    const attendanceResult = await client.query(attendanceQuery, [subjectIds, studentIds, monthNumber, year]);
+
+    // 5. Process data
+    const dailyData = {};
+    for (const row of attendanceResult.rows) {
+      const date = row.date_str;
+      if (!dailyData[date]) {
+        dailyData[date] = {
+          date: date,
+          day: row.day_name,
+          present: 0,
+          absent: 0,
+          late: 0,
+          subjects: new Set()
+        };
+      }
+      
+      const count = parseInt(row.count, 10);
+      if (row.status === 'present') dailyData[date].present += count;
+      if (row.status === 'absent') dailyData[date].absent += count;
+      if (row.status === 'late') dailyData[date].late += count;
+      dailyData[date].subjects.add(subjectMap.get(row.subject_id) || 'Unknown');
+    }
+
+    // --- THIS IS THE FIX ---
+
+    // 6. Calculate summary (FROM 'dailyData', *before* transforming)
+    const dailyDataArray = Object.values(dailyData);
+    const totalDays = dailyDataArray.length;
+    const totalPresent = dailyDataArray.reduce((sum, d) => sum + d.present, 0); // Correct
+    const totalAbsent = dailyDataArray.reduce((sum, d) => sum + d.absent, 0);   // Correct
+    const totalLate = dailyDataArray.reduce((sum, d) => sum + d.late, 0);     // Correct
+    const totalRecords = totalPresent + totalAbsent + totalLate;
+    const avgAttendance = (totalRecords > 0) ? Math.round(((totalPresent + totalLate) / totalRecords) * 100) : 0;
+    
+    const summary = {
+      'Total Academic Days': totalDays,
+      'Total Present Records': totalPresent,
+      'Total Absent Records': totalAbsent,
+      'Total Late Records': totalLate,
+      'Average Attendance': `${avgAttendance}%`
+    };
+
+    // 7. Convert to final tableData format (NOW it's safe to do this)
+    const tableData = dailyDataArray.map(d => ({
+      date: d.date,
+      day: d.day,
+      status: `${d.present} Present, ${d.absent} Absent, ${d.late} Late`,
+      subject: Array.from(d.subjects).join(', ')
+    }));
+    
+    // --- END OF FIX ---
+    
+    // 8. Send all data back
+    res.status(200).json({
+      studentInfo: {
+        'Program': program_name,
+        'Department': department_name,
+        'Semester': semester
+      },
+      summary, // This summary now has the correct data
+      tableData
+    });
+
+  } catch (err) {
+    console.error('Error generating report data:', err);
+    res.status(5.00).json({ message: 'Failed to generate report data.' });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // --- NEW ROUTE ---
 // Add a new Teacher Route
 // This is an admin-only action.
@@ -569,5 +714,56 @@ router.delete('/teacher/:id', async (req, res) => {
     }
 });
 
+// --- NEW ROUTE ---
+// GET Admin Dashboard Stats
+router.get('/dashboard-stats', async (req, res) => {
+  // Get today's date from the query (sent by frontend)
+  const { today } = req.query;
+
+  if (!today) {
+    return res.status(400).json({ message: "Today's date is required." });
+  }
+
+  try {
+    // 1. Run all count queries in parallel for speed
+    const [teacherResult, studentResult, presentResult] = await Promise.all([
+      db.query("SELECT COUNT(*) FROM teachers"),
+      db.query("SELECT COUNT(*) FROM students"),
+      db.query(
+        `SELECT COUNT(DISTINCT student_id) 
+         FROM attendance_records 
+         WHERE status IN ('present', 'late') AND attendance_date = $1`,
+        [today]
+      )
+    ]);
+
+    // 2. Extract counts
+    const totalTeachers = parseInt(teacherResult.rows[0].count, 10);
+    const totalStudents = parseInt(studentResult.rows[0].count, 10);
+    const presentToday = parseInt(presentResult.rows[0].count, 10);
+
+    // 3. Calculate attendance rate
+    const attendanceRate = (totalStudents > 0) 
+      ? Math.round((presentToday / totalStudents) * 100) 
+      : 0;
+
+    // 4. Send the complete stats object
+    // Note: recentActivity is mocked as your DB doesn't have an activity log table.
+    res.status(200).json({
+      totalTeachers,
+      totalStudents,
+      presentToday,
+      attendanceRate,
+      recentActivity: [
+        { id: 1, action: 'Teacher "Big Boss" created', time: '2 hours ago' },
+        { id: 2, action: 'Subject "Mathematics I" added', time: '4 hours ago' },
+      ] // Sending mock data to match your component
+    });
+
+  } catch (err) {
+    console.error('Error fetching admin dashboard stats:', err);
+    res.status(500).json({ message: 'Failed to fetch dashboard stats.' });
+  }
+});
 
 module.exports = router;

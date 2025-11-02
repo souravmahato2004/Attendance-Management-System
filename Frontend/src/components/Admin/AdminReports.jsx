@@ -1,40 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Calendar, FileText, TrendingUp, Users, BookOpen } from 'lucide-react';
+import { Download, Calendar, FileText, TrendingUp, Users, BookOpen, GraduationCap } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminReports = () => {
+  // 1. Fix toast function name
+  const { success, eror } = useToast(); 
+
+  // 2. State for dropdowns (will hold objects)
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
-  const [departments] = useState(['CSE', 'ECE', 'Mechanical', 'Civil', 'EEE', 'IT']);
-  const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [years, setYears] = useState([]);
+
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const { showToast } = useToast();
 
   const [reportData, setReportData] = useState({
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
-    program: '',
-    department: '',
-    semester: ''
+    program: '', // Will store ID
+    department: '', // Will store ID
+    semester: '' // Will store number
   });
 
+  // 3. Load all dropdown data from the API
   useEffect(() => {
-    loadProgramsAndSemesters();
-  }, []);
+    const loadDropdownData = async () => {
+      try {
+        setLoading(true);
+        // Fetch all in parallel
+        const [programsData, departmentsData, semestersData] = await Promise.all([
+          adminService.getPrograms(),
+          adminService.getDepartments(),
+          adminService.getSemesters() // Call new service function
+        ]);
+        
+        setPrograms(programsData); // Expects [{id, name}]
+        setDepartments(departmentsData); // Expects [{id, name}]
+        setSemesters(semestersData); // Expects [1, 2, 3...]
 
-  const loadProgramsAndSemesters = async () => {
-    try {
-      setLoading(true);
-      const data = await adminService.getProgramsAndSemesters();
-      setPrograms(data.programs);
-      setSemesters(data.semesters);
-    } catch (error) {
-      showToast('Failed to load programs and semesters', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Create dynamic year list
+        const currentYear = new Date().getFullYear();
+        setYears(Array.from({ length: 5 }, (_, i) => currentYear - i)); // [2025, 2024, ...]
+        
+      } catch (error) {
+        eror('Failed to load page data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDropdownData();
+  }, [eror]); // Added eror dependency
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -45,8 +63,9 @@ const AdminReports = () => {
   };
 
   const handleGenerateReport = async () => {
+    // 4. Validate that IDs/values are selected
     if (!reportData.program || !reportData.department || !reportData.semester) {
-      showToast('Please select program, department, and semester', 'error');
+      eror('Please select program, department, and semester');
       return;
     }
 
@@ -55,13 +74,13 @@ const AdminReports = () => {
       await adminService.generateMonthlyReport(
         parseInt(reportData.month),
         parseInt(reportData.year),
-        reportData.program,
-        reportData.department,
-        reportData.semester
+        reportData.program, // This is program_id
+        reportData.department, // This is department_id
+        reportData.semester // This is semester number
       );
-      showToast('Report generated successfully', 'success');
+      success('Report generated successfully');
     } catch (error) {
-      showToast('Failed to generate report', 'error');
+      eror(`Failed to generate report: ${error.message}`);
     } finally {
       setGenerating(false);
     }
@@ -100,9 +119,7 @@ const AdminReports = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {/* Month Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Month
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <select
@@ -118,66 +135,59 @@ const AdminReports = () => {
             </div>
           </div>
 
-          {/* Year Selection */}
+          {/* 5. Dynamic Year Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Year
-            </label>
-            <input
-              type="number"
+            <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+            <select
               name="year"
               value={reportData.year}
               onChange={handleInputChange}
-              min="2020"
-              max="2030"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            >
+              {years.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
 
-          {/* Program Selection */}
+          {/* 6. Program Selection (uses objects) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Program
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
             <select
               name="program"
-              value={reportData.program}
+              value={reportData.program} // This is the ID
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Select Program</option>
               {programs.map(program => (
-                <option key={program} value={program}>{program}</option>
+                <option key={program.id} value={program.id}>{program.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Department Selection */}
+          {/* 7. Department Selection (uses objects) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Department
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
             <select
               name="department"
-              value={reportData.department}
+              value={reportData.department} // This is the ID
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Select Department</option>
               {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
               ))}
             </select>
           </div>
 
-          {/* Semester Selection */}
+          {/* 8. Semester Selection (uses numbers) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Semester
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
             <select
               name="semester"
-              value={reportData.semester}
+              value={reportData.semester} // This is the number
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
@@ -205,7 +215,7 @@ const AdminReports = () => {
         </div>
       </div>
 
-      {/* Report Preview */}
+      {/* 9. Report Preview (now updates dynamically) */}
       {reportData.program && reportData.department && reportData.semester && (
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Preview</h3>
@@ -215,16 +225,16 @@ const AdminReports = () => {
                 <h4 className="font-medium text-gray-900 mb-2">Report Details</h4>
                 <div className="space-y-1 text-sm text-gray-600">
                   <p><span className="font-medium">Period:</span> {monthNames[reportData.month]} {reportData.year}</p>
-                  <p><span className="font-medium">Program:</span> {reportData.program}</p>
-                  <p><span className="font-medium">Department:</span> {reportData.department}</p>
+                  {/* Find names from state arrays */}
+                  <p><span className="font-medium">Program:</span> {programs.find(p => p.id == reportData.program)?.name || '...'}</p>
+                  <p><span className="font-medium">Department:</span> {departments.find(d => d.id == reportData.department)?.name || '...'}</p>
                   <p><span className="font-medium">Semester:</span> {reportData.semester}</p>
                 </div>
               </div>
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Report Contents</h4>
                 <div className="space-y-1 text-sm text-gray-600">
-                  <p>• Daily attendance summary</p>
-                  <p>• Subject-wise attendance</p>
+                  <p>• Monthly Attendance summary</p>
                   <p>• Overall statistics</p>
                   <p>• Generated in PDF format</p>
                 </div>
@@ -234,12 +244,12 @@ const AdminReports = () => {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* 10. Quick Stats (now uses fetched data) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="h-6 w-6 text-green-600" />
+              <GraduationCap className="h-6 w-6 text-green-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Total Programs</p>
@@ -247,27 +257,25 @@ const AdminReports = () => {
             </div>
           </div>
         </div>
-
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Users className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Departments</p>
+              <p className="text-2xl font-bold text-gray-900">{departments.length}</p>
+            </div>
+          </div>
+        </div>
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <BookOpen className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Semesters</p>
+              <p className="text-sm font-medium text-gray-500">Semesters</p>
               <p className="text-2xl font-bold text-gray-900">{semesters.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Departments</p>
-              <p className="text-2xl font-bold text-gray-900">{departments.length}</p>
             </div>
           </div>
         </div>
@@ -277,4 +285,3 @@ const AdminReports = () => {
 };
 
 export default AdminReports;
-

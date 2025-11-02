@@ -21,7 +21,7 @@ const StudentLogin = () => {
 
     try {
       const response = await studentService.login(credentials)
-      await login(response.student)
+      await login(response.user)
       navigate('/student/dashboard')
     } catch (err) {
       showError(err.message || 'Login failed')

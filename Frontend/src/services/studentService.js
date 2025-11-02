@@ -55,64 +55,97 @@ export const studentService = {
   }
   },
 
-  // Get dashboard stats
-  getDashboardStats: async (studentId, subject) => {
+  // NEW: Get subjects for the logged-in student
+  getSubjects: async (program_name, department_name, semester) => {
+    const API_URL = 'http://localhost:3001/api/student/subjects';
     
-    // Mock different stats per subject
-    const base = subject ? subject.length : 0;
-    return {
-      totalDays: 22,
-      presentDays: 16 + (base % 3),
-      absentDays: 4 - (base % 2),
-      lateDays: 2 - (base % 2),
-      attendancePercentage: 75 + (base % 10),
-      currentStreak: 5,
-      monthlyStats: {
-        September: { present: 18, absent: 3, late: 1 },
-        August: { present: 20, absent: 2, late: 0 }
+    const params = new URLSearchParams({
+      program: program_name,
+      department: department_name,
+      semester: semester
+    });
+
+    try {
+      const response = await fetch(`${API_URL}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch subjects.');
       }
-    };
+      return data; // Returns [{ subject_id, subject_name }, ...]
+    } catch (error) {
+      console.error('getSubjects API Error:', error);
+      throw error;
+    }
   },
 
-  // Get attendance data for a month
-  getMonthlyAttendance: async (studentId, month, year, subject, attendanceStatus) => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    const data = [];
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      
-      // Skip weekends
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
-        const seed = (subject ? subject.length : 1) * (day + 3);
-        const random = (Math.sin(seed) + 1) / 2; // deterministic-ish by subject
-        let status;
-        
-        if (random > 0.15) {
-          status = attendanceStatus.PRESENT;
-        } else if (random > 0.05) {
-          status = attendanceStatus.ABSENT;
-        } else {
-          status = attendanceStatus.LATE;
-        }
-        
-        data.push({
-          date: date.toISOString().split('T')[0],
-          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-          dayNumber: day,
-          status: status,
-          subject: subject
-        });
-      }
+  // --- UPDATED ---
+  // Get dashboard stats (now fetches from backend)
+  getDashboardStats: async (studentId, subjectId) => {
+    // Return empty stats if data is missing
+    if (!studentId || !subjectId) {
+      return { totalDays: 0, presentDays: 0, absentDays: 0, attendancePercentage: 0, lateDays: 0 };
     }
     
-    return data;
+    const API_URL = 'http://localhost:3001/api/student/dashboard-stats';
+    const params = new URLSearchParams({ studentId, subjectId });
+
+    try {
+      const response = await fetch(`${API_URL}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch stats.');
+      }
+      return data;
+    } catch (error) {
+      console.error('getDashboardStats API Error:', error);
+      throw error;
+    }
   },
 
+  // --- UPDATED ---
+  // Get attendance data for a month (now fetches from backend)
+  getMonthlyAttendance: async (studentId, month, year, subjectId) => {
+    // Note: 'subject' prop is now 'subjectId'
+    if (!studentId || !subjectId) {
+      return []; // Not enough info to fetch
+    }
+    
+    const API_URL = 'http://localhost:3001/api/student/monthly-attendance';
+    const params = new URLSearchParams({
+      studentId,
+      subjectId,
+      month, // 0-indexed
+      year
+    });
+    
+    try {
+      const response = await fetch(`${API_URL}?${params.toString()}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch monthly attendance.');
+      }
+      return data;
+    } catch (error) {
+      console.error('getMonthlyAttendance API Error:', error);
+      throw error;
+    }
+  },
+
+  // --- UPDATED FUNCTION ---
   // Download monthly report
   downloadMonthlyReport: async (studentData, attendanceData, month, year, subject, attendanceStatus) => {
+    
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -123,17 +156,20 @@ export const studentService = {
     const presentDays = attendanceData.filter(d => d.status === attendanceStatus.PRESENT).length;
     const absentDays = attendanceData.filter(d => d.status === attendanceStatus.ABSENT).length;
     const lateDays = attendanceData.filter(d => d.status === attendanceStatus.LATE).length;
-    const percentage = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : 0;
+    const attended = presentDays + lateDays;
+    const percentage = totalDays > 0 ? ((attended / totalDays) * 100).toFixed(1) : 0;
     
     // Prepare PDF data
     const pdfData = {
       title: `Student Attendance Report - ${monthName} ${year} (${subject})`,
-      generatedDate: formatDate(new Date(), 'readable'),
+      generatedDate: formatDate(new Date(), 'readable'), // Assumes you have formatDate helper
+      
+      // --- THIS SECTION IS FIXED ---
       studentInfo: {
         'Name': studentData.name,
-        'Roll Number': studentData.rollNumber,
-        'Program': studentData.program || 'N/A',
-        'Department': studentData.department || 'N/A',
+        'Roll Number': studentData.roll_number,       // Use roll_number
+        'Program': studentData.program_name || 'N/A', // Use program_name
+        'Department': studentData.department_name || 'N/A', // Use department_name
         'Semester': studentData.semester || 'N/A',
         'Email': studentData.email,
         'Subject': subject
@@ -153,8 +189,10 @@ export const studentService = {
     };
     
     const safeSubject = (subject || 'Subject').replace(/\s+/g, '_').toLowerCase();
-    const filename = `attendance_report_${studentData.rollNumber}_${safeSubject}_${monthName}_${year}.pdf`;
-    downloadPDF(pdfData, filename);
+    const filename = `attendance_report_${studentData.roll_number}_${safeSubject}_${monthName}_${year}.pdf`;
+    
+    // This call to your helper function will now work
+    downloadPDF(pdfData, filename); 
     
     return {
       success: true,
@@ -162,26 +200,4 @@ export const studentService = {
     };
   },
 
-  // Get attendance summary for multiple months
-  getAttendanceSummary: async (studentId, months = 6) => {
-    await new Promise(resolve => setTimeout(resolve, 700));
-    
-    const summary = [];
-    const currentDate = new Date();
-    
-    for (let i = 0; i < months; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      
-      summary.push({
-        month: monthName,
-        present: Math.floor(Math.random() * 5) + 18,
-        absent: Math.floor(Math.random() * 4) + 1,
-        late: Math.floor(Math.random() * 3),
-        percentage: Math.floor(Math.random() * 10) + 85
-      });
-    }
-    
-    return summary;
-  }
 };

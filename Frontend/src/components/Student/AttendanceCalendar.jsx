@@ -1,10 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Download, Calendar as CalendarIcon, Filter, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Download, Calendar as CalendarIcon, Filter, RefreshCw, Check, X, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { studentService } from '../../services/studentService';
+import { useToast } from '../../contexts/ToastContext';
 
-const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
+// Define status locally
+const ATTENDANCE_STATUS = {
+  PRESENT: 'present',
+  ABSENT: 'absent',
+  LATE: 'late'
+};
+
+const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
   const { user } = useAuth();
+  const { eror } = useToast();
+
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [attendanceData, setAttendanceData] = useState([]);
@@ -12,46 +22,64 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadAttendanceData();
-  }, [selectedMonth, selectedYear, subject]);
+  // --- 1. THIS IS THE NEW CODE ---
+  // Generate a dynamic list of years (e.g., [2025, 2024, 2023, 2022, 2021])
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  // --- END OF NEW CODE ---
 
-  const loadAttendanceData = async () => {
+  const loadAttendanceData = useCallback(async () => {
+    if (!studentId || !subjectId) {
+      setAttendanceData([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError('');
-      const data = await studentService.getMonthlyAttendance(user.id, selectedMonth, selectedYear, subject);
+      const data = await studentService.getMonthlyAttendance(
+        studentId, 
+        selectedMonth, 
+        selectedYear, 
+        subjectId
+      );
       setAttendanceData(data);
-      updateStats(data);
     } catch (error) {
       setError(error.message);
+      eror(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth, selectedYear, subjectId, studentId, eror]);
 
-  const updateStats = (data) => {
-    const total = data.length;
-    const present = data.filter(record => record.status === 'present').length;
-    const absent = data.filter(record => record.status === 'absent').length;
-    const late = data.filter(record => record.status === 'late').length;
-    const percentage = total > 0 ? ((present / total) * 100).toFixed(1) : 0;
+  useEffect(() => {
+    loadAttendanceData();
+  }, [loadAttendanceData]);
 
-    const stats = {
-      totalDays: total,
-      presentDays: present,
-      absentDays: absent,
-      lateDays: late,
-      attendancePercentage: parseFloat(percentage)
-    };
-
-    onStatsUpdate(stats);
-  };
+  const stats = useMemo(() => {
+    const present = attendanceData.filter(r => r.status === ATTENDANCE_STATUS.PRESENT).length;
+    const absent = attendanceData.filter(r => r.status === ATTENDANCE_STATUS.ABSENT).length;
+    const late = attendanceData.filter(r => r.status === ATTENDANCE_STATUS.LATE).length;
+    const total = attendanceData.length;
+    const attended = present + late;
+    const percentage = total > 0 ? Math.round((attended / total) * 100) : 0;
+    return { present, absent, late, total, percentage };
+  }, [attendanceData]);
 
   const downloadMonthlyReport = async () => {
+    const subject = subjects?.find(s => s.subject_id == subjectId);
+    const subjectName = subject ? subject.subject_name : "Subject";
+
     try {
       setDownloading(true);
-      await studentService.downloadMonthlyReport(user, attendanceData, selectedMonth, selectedYear, subject);
+      await studentService.downloadMonthlyReport(
+        user, 
+        attendanceData, 
+        selectedMonth, 
+        selectedYear, 
+        subjectName,
+        ATTENDANCE_STATUS 
+      );
     } catch (error) {
       alert(error.message);
     } finally {
@@ -66,11 +94,11 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
 
   const getStatusStyles = (status) => {
     switch (status) {
-      case 'present':
+      case ATTENDANCE_STATUS.PRESENT:
         return 'bg-green-100 border-green-300 text-green-800 hover:bg-green-200';
-      case 'absent':
+      case ATTENDANCE_STATUS.ABSENT:
         return 'bg-red-100 border-red-300 text-red-800 hover:bg-red-200';
-      case 'late':
+      case ATTENDANCE_STATUS.LATE:
         return 'bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200';
       default:
         return 'bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200';
@@ -79,38 +107,28 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'present':
-        return '✓';
-      case 'absent':
-        return '✗';
-      case 'late':
-        return '⏰';
-      default:
-        return '?';
+      case ATTENDANCE_STATUS.PRESENT: return <Check className="h-5 w-5" />;
+      case ATTENDANCE_STATUS.ABSENT: return <X className="h-5 w-5" />;
+      case ATTENDANCE_STATUS.LATE: return <Clock className="h-5 w-5" />;
+      default: return '?';
     }
   };
 
   const getStatusLabel = (status) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
-
-  const getAttendanceStats = () => {
-    const present = attendanceData.filter(record => record.status === 'present').length;
-    const absent = attendanceData.filter(record => record.status === 'absent').length;
-    const late = attendanceData.filter(record => record.status === 'late').length;
-    const total = attendanceData.length;
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-
-    return { present, absent, late, total, percentage };
-  };
-
-  const stats = getAttendanceStats();
+  
+  const currentSubjectName = useMemo(() => {
+     if (!subjectId || !subjects) return "";
+     const subject = subjects.find(s => s.subject_id == subjectId);
+     return subject ? `- ${subject.subject_name}` : "";
+  }, [subjectId, subjects]);
 
   return (
     <div className="p-6">
       {/* Controls */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 space-y-4 lg:space-y-0">
-        <h3 className="text-xl font-bold text-gray-900">Monthly Attendance Calendar {subject ? `- ${subject}` : ''}</h3>
+        <h3 className="text-xl font-bold text-gray-900">Monthly Attendance {currentSubjectName}</h3>
         
         <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
           <div className="flex items-center space-x-2">
@@ -125,22 +143,28 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
                 <option key={index} value={index}>{month}</option>
               ))}
             </select>
+            
+            {/* --- 2. THIS IS THE UPDATED DROPDOWN --- */}
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
               disabled={loading}
             >
-              <option value={2024}>2024</option>
-              <option value={2025}>2025</option>
+              {/* Map over the dynamic 'years' array */}
+              {years.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
             </select>
+            {/* --- END OF UPDATED DROPDOWN --- */}
+
           </div>
           
           <div className="flex space-x-2">
             <button
               onClick={loadAttendanceData}
               disabled={loading}
-              className="btn-secondary flex items-center space-x-2"
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-300 flex items-center space-x-2 disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -149,10 +173,10 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
             <button
               onClick={downloadMonthlyReport}
               disabled={downloading || attendanceData.length === 0}
-              className="btn-primary flex items-center space-x-2"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors duration-300 flex items-center space-x-2 disabled:opacity-50"
             >
               {downloading ? (
-                <div className="loading-spinner h-4 w-4"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
               ) : (
                 <Download className="h-4 w-4" />
               )}
@@ -164,7 +188,7 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
 
       {/* Error Message */}
       {error && (
-        <div className="error-message mb-6">
+        <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
           {error}
         </div>
       )}
@@ -192,7 +216,7 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
       {/* Loading State */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="loading-spinner h-8 w-8 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
         </div>
       ) : (
         /* Attendance Calendar Grid */
@@ -201,16 +225,17 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
             <div
               key={index}
               className={`p-4 rounded-lg border-2 text-center transition-all duration-300 hover:shadow-lg cursor-pointer ${getStatusStyles(record.status)}`}
-              title={`${new Date(record.date).toLocaleDateString('en-US', { 
+              title={`${new Date(record.date + 'T00:00:00.000Z').toLocaleDateString('en-US', {
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
-                day: 'numeric' 
+                day: 'numeric',
+                timeZone: 'UTC'
               })} - ${getStatusLabel(record.status)}`}
             >
               <div className="text-2xl font-bold mb-1">{record.dayNumber}</div>
               <div className="text-xs uppercase tracking-wide mb-2 opacity-75">{record.day}</div>
-              <div className="text-xl mb-1">{getStatusIcon(record.status)}</div>
+              <div className="text-xl mb-1 flex justify-center">{getStatusIcon(record.status)}</div>
               <div className="text-xs font-medium capitalize">{record.status}</div>
             </div>
           ))}
@@ -221,13 +246,9 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
       {!loading && attendanceData.length === 0 && (
         <div className="text-center py-12">
           <CalendarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <div className="text-gray-500 mb-2">No attendance data available for the selected month.</div>
-          <button
-            onClick={loadAttendanceData}
-            className="text-purple-600 hover:text-purple-500 font-medium"
-          >
-            Try refreshing the data
-          </button>
+          <div className="text-gray-500 mb-2">
+            {subjectId ? "No attendance data available for this subject in the selected month." : "Please select a subject from the dashboard."}
+          </div>
         </div>
       )}
 
@@ -237,19 +258,19 @@ const AttendanceCalendar = ({ onStatsUpdate, subject }) => {
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-green-100 border border-green-300 rounded flex items-center justify-center">
-              <span className="text-xs">✓</span>
+              <Check className="h-3 w-3 text-green-800" />
             </div>
             <span className="text-sm text-gray-600">Present</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-red-100 border border-red-300 rounded flex items-center justify-center">
-              <span className="text-xs">✗</span>
+              <X className="h-3 w-3 text-red-800" />
             </div>
             <span className="text-sm text-gray-600">Absent</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded flex items-center justify-center">
-              <span className="text-xs">⏰</span>
+              <Clock className="h-3 w-3 text-yellow-800" />
             </div>
             <span className="text-sm text-gray-600">Late</span>
           </div>

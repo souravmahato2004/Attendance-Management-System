@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // 1. Import useCallback
 import Header from '../Common/Header';
 import StatCard from '../Common/StatCard';
 import AttendanceCalendar from './AttendanceCalendar';
-import { Clock, Calendar, TrendingUp, Award, Target, BookOpen } from 'lucide-react';
+import { Clock, Calendar, TrendingUp, Award, Target, BookOpen, Check, X } from 'lucide-react';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../contexts/AuthContext';
-import { useApp } from '../../contexts/AppContext';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -13,47 +12,80 @@ const StudentDashboard = () => {
     totalDays: 0,
     presentDays: 0,
     absentDays: 0,
-    attendancePercentage: 0
+    lateDays: 0,
+    attendancePercentage: 0,
+    currentStreak: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  
+  const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
 
-  const { subjects } = useApp();
-  const { getSubjects } = useApp();
-
-  useEffect(() => {
-    if (user && user.program_name && user.department_name && user.semester) {
-      getSubjects(user.program_name, user.department_name, user.semester);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (subjects && subjects.length > 0) {
-      setSelectedSubject(subjects[0]);
-      loadDashboardData();
-    }
-  }, [subjects]); 
-
-  const loadDashboardData = async () => {
+  // 2. Wrap loadDashboardData in useCallback
+  const loadDashboardData = useCallback(async () => {
     try {
-      setLoading(true);
-      const data = await studentService.getDashboardStats(user.id, selectedSubject);
+      setLoading(true); // Set loading true for stats fetch
+      const data = await studentService.getDashboardStats(user.student_id, selectedSubject);
       setStats(data);
     } catch (error) {
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.student_id, selectedSubject]); // Dependencies
 
-  if (loading) {
+  // 3. Wrap loadSubjects in useCallback
+  const loadSubjects = useCallback(async () => {
+    if (user && user.program_name && user.department_name && user.semester) {
+      try {
+        const subjectData = await studentService.getSubjects(
+          user.program_name,
+          user.department_name,
+          user.semester
+        );
+        setSubjects(subjectData);
+        
+        if (subjectData.length > 0) {
+          setSelectedSubject(subjectData[0].subject_id);
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
+  }, [user]); // Dependency
+
+  // 4. Update useEffect to include loadSubjects
+  useEffect(() => {
+    if (user) {
+      loadSubjects();
+    }
+  }, [user, loadSubjects]); // Add function to dependency array
+
+  // 5. Update useEffect to include loadDashboardData
+  useEffect(() => {
+    if (user?.student_id && selectedSubject) {
+      loadDashboardData();
+    }
+    if (!selectedSubject) {
+      setStats({ totalDays: 0, presentDays: 0, absentDays: 0, lateDays: 0, attendancePercentage: 0, currentStreak: 0 });
+    }
+  }, [selectedSubject, user?.student_id, loadDashboardData]); // Add function to dependency array
+
+  
+  // This is the initial page spinner
+  if (!user || (loading && subjects.length === 0)) { 
     return (
       <div className="min-h-screen bg-gray-50">
         <Header title="Student Dashboard" />
         <div className="flex items-center justify-center h-64">
-          <div className="loading-spinner h-8 w-8 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
         </div>
       </div>
     );
@@ -86,25 +118,31 @@ const StudentDashboard = () => {
             </div>
             <div>
               <p className="text-purple-100 text-sm">Current Attendance</p>
-              <p className="font-semibold text-lg">{stats.attendancePercentage}%</p>
+              <p className="font-semibold text-lg">{loading ? '...' : `${stats.attendancePercentage}%`}</p>
             </div>
           </div>
-          {subjects?.length > 0 && (
+          
+          {/* Subject Dropdown */}
+          {subjects?.length > 0 ? (
             <div className="mt-4">
               <label htmlFor="subject-select" className="text-sm text-purple-100 mr-2">
                 Viewing Attendance For:
               </label>
               <select
                 id="subject-select"
-                value={selectedSubject}
+                value={selectedSubject} // Value is the subject_id
                 onChange={(e) => setSelectedSubject(e.target.value)}
                 className="bg-white/20 border border-white/40 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
               >
                 {subjects.map(sub => (
-                  <option key={sub} value={sub} className='text-gray-900'>{sub}</option>
+                  <option key={sub.subject_id} value={sub.subject_id} className='text-gray-900'>
+                    {sub.subject_name}
+                  </option>
                 ))}
               </select>
             </div>
+          ) : (
+            <p className="text-purple-100 text-sm mt-4">No subjects found for your course.</p>
           )}
         </div>
 
@@ -135,7 +173,7 @@ const StudentDashboard = () => {
         </div>
 
         {error && (
-          <div className="error-message mb-6">
+          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
             {error}
           </div>
         )}
@@ -146,101 +184,118 @@ const StudentDashboard = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
-                title="Total Days"
-                value={stats.totalDays}
+                title="Total Classes"
+                value={loading ? '...' : stats.totalDays}
                 icon={Calendar}
                 color="blue"
-                subtitle="Academic days this month"
-                trend={stats.totalDays > 20 ? { positive: true, value: 5, period: 'from last month' } : null}
+                subtitle="Total classes held"
               />
               <StatCard
-                title="Present Days"
-                value={stats.presentDays}
-                icon={Clock}
+                title="Present"
+                value={loading ? '...' : stats.presentDays}
+                icon={Check}
                 color="green"
-                subtitle="Days attended"
-                trend={stats.presentDays > 15 ? { positive: true, value: 10, period: 'from last month' } : null}
+                subtitle="Days marked present"
               />
               <StatCard
-                title="Absent Days"
-                value={stats.absentDays}
-                icon={TrendingUp}
+                title="Absent"
+                value={loading ? '...' : stats.absentDays}
+                icon={X}
                 color="red"
-                subtitle="Days missed"
-                trend={stats.absentDays < 3 ? { positive: true, value: 2, period: 'improvement' } : { positive: false, value: 1, period: 'from target' }}
+                subtitle="Days marked absent"
               />
               <StatCard
-                title="Attendance Rate"
-                value={`${stats.attendancePercentage}%`}
-                icon={Award}
-                color="purple"
-                subtitle="Current performance"
-                trend={stats.attendancePercentage > 80 ? { positive: true, value: 5, period: 'above minimum' } : { positive: false, value: 5, period: 'below target' }}
+                title="Late"
+                value={loading ? '...' : stats.lateDays}
+                icon={Clock}
+                color="yellow"
+                subtitle="Days marked late"
               />
             </div>
 
             {/* Performance Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
               {/* Attendance Goal */}
               <div className="bg-white rounded-xl shadow-lg p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Target className="h-6 w-6 text-purple-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Attendance Goal</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-600">Current: {stats.attendancePercentage}%</span>
-                      <span className="text-gray-600">Goal: 85%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className={`h-3 rounded-full transition-all duration-500 ${
-                          stats.attendancePercentage >= 85 
-                            ? 'bg-green-500' 
-                            : stats.attendancePercentage >= 75 
-                            ? 'bg-yellow-500' 
-                            : 'bg-red-500'
-                        }`}
-                        style={{ width: `${Math.min(stats.attendancePercentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-sm text-gray-600">
-                    {stats.attendancePercentage >= 85 ? (
-                      <p className="text-green-600 font-medium">🎉 Great job! You've met your attendance goal!</p>
-                    ) : stats.attendancePercentage >= 75 ? (
-                      <p className="text-yellow-600 font-medium">📈 You're close to your goal. Keep it up!</p>
-                    ) : (
-                      <p className="text-red-600 font-medium">⚠️ You need to improve your attendance rate.</p>
-                    )}
-                  </div>
-                </div>
+                {(() => {
+                  let currentGoal;
+                  let goalMessage;
+                  let barColor;
+
+                  if (loading) {
+                    currentGoal = 75;
+                    goalMessage = <p className="text-gray-500 font-medium">Loading stats...</p>;
+                    barColor = 'bg-gray-200';
+                  } else if (stats.attendancePercentage >= 90) {
+                    currentGoal = 100;
+                    goalMessage = <p className="text-green-600 font-medium">🎉 Excellent! You're aiming for a perfect 100%!</p>;
+                    barColor = 'bg-green-500';
+                  } else if (stats.attendancePercentage >= 75) {
+                    currentGoal = 90;
+                    goalMessage = <p className="text-yellow-600 font-medium">📈 Great! Now push for the next milestone: 90%.</p>;
+                    barColor = 'bg-yellow-500';
+                  } else {
+                    currentGoal = 75;
+                    goalMessage = <p className="text-red-600 font-medium">⚠️ You are below the 75% requirement. Let's get you there!</p>;
+                    barColor = 'bg-red-500';
+                  }
+
+                  return (
+                    <>
+                      <div className="flex items-center space-x-3 mb-4">
+                        <Target className="h-6 w-6 text-purple-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">Attendance Goal ({currentGoal}%)</h3>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-600">Current: {loading ? '...' : `${stats.attendancePercentage}%`}</span>
+                            <span className="text-gray-600">Goal: {currentGoal}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div
+                              className={`h-3 rounded-full transition-all duration-500 ${barColor}`}
+                              style={{ width: `${Math.min(stats.attendancePercentage, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        
+                        <div className="text-sm text-gray-600">
+                          {goalMessage}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
-              {/* Monthly Summary */}
+              {/* Subject Summary */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center space-x-3 mb-4">
                   <BookOpen className="h-6 w-6 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">This Month Summary</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Subject Summary</h3>
                 </div>
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Best streak</span>
-                    <span className="font-semibold text-gray-900">{stats.currentStreak || 5} days</span>
+                {loading ? (
+                  <div className="text-gray-500 text-sm">Loading stats...</div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Attended (Present + Late)</span>
+                      <span className="font-semibold text-gray-900">{stats.presentDays + stats.lateDays} days</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Absent</span>
+                      <span className="font-semibold text-gray-900">{stats.absentDays} days</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Total Classes</span>
+                      <span className="font-semibold text-gray-900">{stats.totalDays} days</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Days late</span>
-                    <span className="font-semibold text-gray-900">{stats.lateDays || 1} days</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Perfect days</span>
-                    <span className="font-semibold text-gray-900">{stats.presentDays - (stats.lateDays || 1)} days</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -288,7 +343,11 @@ const StudentDashboard = () => {
         {/* Attendance Tab */}
         {activeTab === 'attendance' && (
           <div className="bg-white rounded-xl shadow-lg">
-            <AttendanceCalendar onStatsUpdate={setStats} subject={selectedSubject} />
+            <AttendanceCalendar 
+              subjectId={selectedSubject} 
+              studentId={user.student_id} 
+              subjects={subjects}
+            />
           </div>
         )}
       </main>

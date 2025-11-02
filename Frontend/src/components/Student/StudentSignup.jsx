@@ -218,9 +218,9 @@ const StudentSignup = () => {
               {/* Show subjects once loaded */}
               {!isLoadingSubjects && subjects.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {subjects.map(sub => (
-                    <span key={sub} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">
-                      {sub}
+                  {subjects.map(subject => (
+                    <span key={subject.subject_id} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">
+                      {subject.subject_name}
                     </span>
                   ))}
                 </div>

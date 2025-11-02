@@ -15,7 +15,15 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   const { user } = useAuth();
   const { success, eror } = useToast();
 
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const getLocalDate = () => {
+    const todayDate = new Date();
+    const year = todayDate.getFullYear();
+    const month = (todayDate.getMonth() + 1).toString().padStart(2, '0'); // (0-11) + 1
+    const day = todayDate.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`; // e.g., "2025-11-03"
+  };
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   

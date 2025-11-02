@@ -119,7 +119,6 @@ const AdminDashboard = () => {
                 value={stats.totalTeachers}
                 icon={GraduationCap}
                 color="blue"
-                trend={{ positive: true, value: 12, period: 'from last month' }}
                 subtitle="Active faculty members"
               />
               <StatCard
@@ -127,7 +126,6 @@ const AdminDashboard = () => {
                 value={stats.totalStudents}
                 icon={Users}
                 color="green"
-                trend={{ positive: true, value: 8, period: 'from last month' }}
                 subtitle="Enrolled students"
               />
               <StatCard
@@ -135,7 +133,6 @@ const AdminDashboard = () => {
                 value={stats.presentToday}
                 icon={UserCheck}
                 color="purple"
-                trend={{ positive: false, value: 2, period: 'from yesterday' }}
                 subtitle="Students in attendance"
               />
               <StatCard
@@ -143,7 +140,6 @@ const AdminDashboard = () => {
                 value={`${stats.attendanceRate}%`}
                 icon={TrendingUp}
                 color="yellow"
-                trend={{ positive: true, value: 5, period: 'from last week' }}
                 subtitle="Overall performance"
               />
             </div>
@@ -156,7 +152,9 @@ const AdminDashboard = () => {
               </div>
               
               <div className="space-y-4">
-                {stats.recentActivity?.map((activity, index) => (
+              {/* Check if recentActivity exists and has items */}
+              {stats.recentActivity && stats.recentActivity.length > 0 ? (
+                stats.recentActivity.map((activity, index) => (
                   <div key={activity.id || index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0">
                       <Clock className="h-5 w-5 text-gray-400" />
@@ -170,8 +168,14 @@ const AdminDashboard = () => {
                       </p>
                     </div>
                   </div>
-                ))}
+                ))
+              ) : (
+              // Show this message if no activity is found
+              <div className="text-center py-4 text-gray-500">
+                <p>No recent activity found.</p>
               </div>
+            )}
+          </div>
             </div>
 
             {/* Quick Actions */}

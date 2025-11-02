@@ -12,7 +12,7 @@ const AdminLogin = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const { mockCredentials } = useConfig();
-  const { error: showError } = useToast();
+  const { success, eror } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -24,7 +24,7 @@ const AdminLogin = () => {
       login(response.user);
       navigate('/admin/dashboard');
     } catch (err) {
-      showError(err.message || 'Login failed. Please check your credentials.');
+      eror(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
