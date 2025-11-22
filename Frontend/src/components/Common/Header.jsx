@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, User, Bell, Menu, X } from 'lucide-react';
@@ -25,6 +25,7 @@ const Header = ({ title }) => {
             >
               {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
+            <img src="https://nitsikkim.ac.in/include/header/assets/images/nitLogo.png" className='h-8 mr-2' alt="LOGO" />
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 ml-2 md:ml-0">{title}</h1>
           </div>
           
@@ -39,7 +40,7 @@ const Header = ({ title }) => {
             {/* User menu */}
             <div className="relative flex items-center space-x-3">
               <div className="hidden sm:flex items-center space-x-2">
-                <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                <div className="h-8 w-8 bg-red-800 rounded-full flex items-center justify-center text-white font-medium text-sm">
                   {user.name.charAt(0)}
                 </div>
                 <div className="hidden md:block">

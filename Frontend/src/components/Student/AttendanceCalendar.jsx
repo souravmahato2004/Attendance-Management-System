@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Download, Calendar as CalendarIcon, Filter, RefreshCw, Check, X, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { studentService } from '../../services/studentService';
 import { useToast } from '../../contexts/ToastContext';
 
-// Define status locally
 const ATTENDANCE_STATUS = {
   PRESENT: 'present',
   ABSENT: 'absent',
@@ -22,11 +21,9 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
 
-  // --- 1. THIS IS THE NEW CODE ---
-  // Generate a dynamic list of years (e.g., [2025, 2024, 2023, 2022, 2021])
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
-  // --- END OF NEW CODE ---
+ 
 
   const loadAttendanceData = useCallback(async () => {
     if (!studentId || !subjectId) {
@@ -126,7 +123,6 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
 
   return (
     <div className="p-6">
-      {/* Controls */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 space-y-4 lg:space-y-0">
         <h3 className="text-xl font-bold text-gray-900">Monthly Attendance {currentSubjectName}</h3>
         
@@ -136,7 +132,7 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-transparent bg-white"
               disabled={loading}
             >
               {monthNames.map((month, index) => (
@@ -148,7 +144,7 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-transparent bg-white"
               disabled={loading}
             >
               {/* Map over the dynamic 'years' array */}
@@ -173,7 +169,7 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
             <button
               onClick={downloadMonthlyReport}
               disabled={downloading || attendanceData.length === 0}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors duration-300 flex items-center space-x-2 disabled:opacity-50"
+              className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors duration-300 flex items-center space-x-2 disabled:opacity-50"
             >
               {downloading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
@@ -216,7 +212,7 @@ const AttendanceCalendar = ({ subjectId, studentId, subjects }) => {
       {/* Loading State */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent"></div>
         </div>
       ) : (
         /* Attendance Calendar Grid */

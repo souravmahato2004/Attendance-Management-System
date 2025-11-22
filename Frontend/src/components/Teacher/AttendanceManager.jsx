@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, Save, Filter, RefreshCw, UserCheck, Users } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 
-// 1. Define attendance status locally
 const ATTENDANCE_STATUS = {
   PRESENT: 'present',
   ABSENT: 'absent',
@@ -18,9 +17,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   const getLocalDate = () => {
     const todayDate = new Date();
     const year = todayDate.getFullYear();
-    const month = (todayDate.getMonth() + 1).toString().padStart(2, '0'); // (0-11) + 1
+    const month = (todayDate.getMonth() + 1).toString().padStart(2, '0');
     const day = todayDate.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`; // e.g., "2025-11-03"
+    return `${year}-${month}-${day}`;
   };
   const [selectedDate, setSelectedDate] = useState(getLocalDate());
 
@@ -34,7 +33,6 @@ const AttendanceManager = ({ onStatsUpdate }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // useEffect to load teacher's subjects
   useEffect(() => {
     const init = async () => {
       if (user?.teacher_id) {
@@ -45,7 +43,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
           subjectData = await teacherService.getTeacherSubjects(user.teacher_id);
         }
         setSubjects(subjectData);
-        setSelectedSubject(''); // Default to no subject selected
+        setSelectedSubject('');
       }
     };
     if (user) {
@@ -53,11 +51,9 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     }
   }, [user]);
 
-  // updateStats function
   const updateStats = useCallback((attendanceData, studentList) => {
     const total = studentList.length;
 
-    // Clear stats if no students
     if (total === 0 && Object.keys(attendanceData).length === 0) {
         if (onStatsUpdate) {
             onStatsUpdate({ totalStudents: 0, presentToday: 0, absentToday: 0, lateToday: 0 });
@@ -79,7 +75,6 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     }
   }, [onStatsUpdate]);
 
-  // loadStudents function
   const loadStudents = useCallback(async () => {
     if (!selectedSubject) {
       setStudents([]);
@@ -101,8 +96,6 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     }
   }, [selectedSubject, eror]);
 
-  // --- CHANGED ---
-  // loadAttendance function (no longer defaults to "Present")
   const loadAttendance = useCallback(async (studentList) => {
     if (studentList.length === 0) {
       setAttendance({});
@@ -112,62 +105,49 @@ const AttendanceManager = ({ onStatsUpdate }) => {
 
     try {
       const data = await teacherService.getAttendance(selectedSubject, selectedDate);
-      // Convert array from DB into the attendance map { student_id: status }
       const attendanceMap = data.reduce((acc, record) => {
         acc[record.student_id] = record.status;
         return acc;
       }, {});
 
-      // --- REMOVED DEFAULT LOGIC ---
-      // We no longer loop and set defaults.
-      // If a student is not in the map, they will have no status selected.
-      
       setAttendance(attendanceMap);
       updateStats(attendanceMap, studentList);
 
     } catch (error) {
-      // No records found, so create an EMPTY map
-      const defaultAttendance = {}; // <--- CHANGED FROM "ALL PRESENT"
+      const defaultAttendance = {};
       setAttendance(defaultAttendance);
       updateStats(defaultAttendance, studentList);
     }
   }, [selectedSubject, selectedDate, updateStats]);
 
-  // --- CHANGED ---
-  // Chained useEffects to load data in order
   useEffect(() => {
-    // If no subject is selected, clear everything.
     if (!selectedSubject) {
       setStudents([]);
       setAttendance({});
-      updateStats({}, []); // Also clear stats
+      updateStats({}, []);
       return;
     }
 
-    // If a subject IS selected, load students and then attendance
     loadStudents().then(studentList => {
       if (studentList) {
         loadAttendance(studentList);
       }
     });
-  }, [selectedSubject, selectedDate, loadStudents, loadAttendance, updateStats]); // Added updateStats
+  }, [selectedSubject, selectedDate, loadStudents, loadAttendance, updateStats]);
 
-  // saveAttendance function
   const saveAttendance = async () => {
     if (!selectedSubject || students.length === 0) return;
 
     setSaving(true);
     setError('');
     try {
-      // Convert map to array, but *only include students who have a status*
       const attendanceData = Object.keys(attendance)
-        .filter(studentId => attendance[studentId]) // Filter out null/undefined status
+        .filter(studentId => attendance[studentId])
         .map(studentId => ({
           student_id: studentId,
           status: attendance[studentId]
         }));
       
-      // If no one was marked, don't send an empty array
       if (attendanceData.length === 0) {
         eror("No attendance data to save. Please mark at least one student.");
         setSaving(false);
@@ -190,9 +170,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     }
   };
 
-  // handleAttendanceChange function
   const handleAttendanceChange = (studentId, status) => {
-    // NEW: Allow un-checking by clicking the same button
     const newStatus = attendance[studentId] === status ? null : status;
     const newAttendance = { ...attendance, [studentId]: newStatus };
     
@@ -200,7 +178,6 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     updateStats(newAttendance, students);
   };
 
-  // markAllPresent function
   const markAllPresent = () => {
     const allPresent = {};
     students.forEach(student => {
@@ -210,7 +187,6 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     updateStats(allPresent, students);
   };
 
-  // getStatusColor function
   const getStatusColor = (status) => {
     switch (status) {
       case ATTENDANCE_STATUS.PRESENT:
@@ -224,13 +200,12 @@ const AttendanceManager = ({ onStatsUpdate }) => {
     }
   };
 
-  // getAttendanceStats function
   const getAttendanceStats = () => {
     const present = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.PRESENT).length;
     const absent = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.ABSENT).length;
     const late = Object.values(attendance).filter(s => s === ATTENDANCE_STATUS.LATE).length;
     const total = students.length;
-    const percentage = (total - absent) > 0 ? Math.round(((total - absent) / total) * 100) : 0; // Present + Late
+    const percentage = (total - absent) > 0 ? Math.round(((total - absent) / total) * 100) : 0;
     return { present, absent, late, total, percentage };
   };
 
@@ -240,13 +215,12 @@ const AttendanceManager = ({ onStatsUpdate }) => {
      return (
        <div className="p-6">
          <div className="flex justify-center items-center h-64">
-           <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
          </div>
        </div>
      );
   }
 
-  // --- JSX ---
   return (
     <div className="p-6">
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 space-y-4 lg:space-y-0">
@@ -259,7 +233,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-transparent bg-white"
             >
               <option value="">Select a Subject</option>
               {subjects.map(sub => (
@@ -276,7 +250,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-transparent bg-white"
             />
           </div>
         </div>
@@ -369,7 +343,7 @@ const AttendanceManager = ({ onStatsUpdate }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white font-medium text-sm mr-4">
+                    <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm mr-4">
                       {student.name.charAt(0)}
                     </div>
                     <div className="text-sm font-medium text-gray-900">{student.name}</div>

@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import Header from '../Common/Header';
 import StatCard from '../Common/StatCard';
 import AttendanceManager from './AttendanceManager';
-import { Users, UserCheck, UserX, Clock, Calendar, TrendingUp, BarChart } from 'lucide-react'; // Added BarChart
+import { Users, UserCheck, UserX, Clock, Calendar, TrendingUp, BarChart } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
-
-// --- NEW COMPONENTS (Create these files) ---
 import StudentList from './StudentList';
 import AttendanceReports from './AttendanceReports';
 
@@ -22,20 +20,16 @@ const TeacherDashboard = () => {
   const [error, setError] = useState('');
   const [assignedSubjects, setAssignedSubjects] = useState([]);
   
-  // --- UPDATED: Added 'students' and 'reports' tabs ---
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    // Only load dashboard data when the user is on the overview tab
-    // and the user object is available.
     if (activeTab === 'overview' && user?.teacher_id) {
       loadDashboardData();
     }
-  }, [activeTab, user?.teacher_id]); // <-- Add dependencies
+  }, [activeTab, user?.teacher_id]);
 
   const loadDashboardData = async () => {
     try {
-      // We don't set loading to true here, so it's a silent refresh
       const data = await teacherService.getDashboardStats(user.teacher_id); 
       const subjects = await teacherService.getTeacherSubjects(user.teacher_id);
       setAssignedSubjects(subjects);
@@ -43,8 +37,6 @@ const TeacherDashboard = () => {
     } catch (error) {
       setError(error.message);
     } finally {
-      // This will set loading to false after the *initial* load.
-      // On subsequent tab-switching loads, it does nothing, which is fine.
       setLoading(false); 
     }
   };
@@ -54,19 +46,18 @@ const TeacherDashboard = () => {
       <div className="min-h-screen bg-gray-50">
         <Header title="Teacher Dashboard" />
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="outfit min-h-screen bg-gray-50">
       <Header title="Teacher Dashboard" />
       
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-green-500 to-blue-600 rounded-xl p-6 text-white">
+        <div className="bg-blue-500 rounded-xl p-6 text-white">
           <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.name || 'Teacher'}!</h2>
           
           <p className="text-green-100">
@@ -85,14 +76,13 @@ const TeacherDashboard = () => {
           </p>
         </div>
 
-        {/* --- UPDATED: Navigation Tabs --- */}
         <div>
           <nav className="flex flex-wrap space-x-4 sm:space-x-8" aria-label="Tabs">
             <button
               onClick={() => setActiveTab('overview')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'overview'
-                  ? 'border-green-500 text-green-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -102,29 +92,27 @@ const TeacherDashboard = () => {
               onClick={() => setActiveTab('attendance')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'attendance'
-                  ? 'border-green-500 text-green-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               Attendance
             </button>
-            {/* --- NEW TAB: Student List --- */}
             <button
               onClick={() => setActiveTab('students')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'students'
-                  ? 'border-green-500 text-green-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               Student List
             </button>
-            {/* --- NEW TAB: Reports --- */}
             <button
               onClick={() => setActiveTab('reports')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'reports'
-                  ? 'border-green-500 text-green-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -139,42 +127,33 @@ const TeacherDashboard = () => {
           </div>
         )}
 
-        {/* --- UPDATED: Tab Content Rendering --- */}
-
-        {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-              <StatCard title="Total Students" value={stats.totalStudents} icon={Users} color="blue"/>
-              <StatCard title="Present Today" value={stats.presentToday} icon={UserCheck} color="green" />
-              <StatCard title="Absent Today" value={stats.absentToday} icon={UserX} color="red" />
-              <StatCard title="Late Today" value={stats.lateToday} icon={Clock} color="yellow" />
+              <StatCard title="Total Students" value={stats.totalStudents} icon={Users} color="blue" subtitle={"Total students under you"}/>
+              <StatCard title="Present Today" value={stats.presentToday} icon={UserCheck} color="green" subtitle={"Total Students present today"} />
+              <StatCard title="Absent Today" value={stats.absentToday} icon={UserX} color="red" subtitle={"Total students absent today"} />
+              <StatCard title="Late Today" value={stats.lateToday} icon={Clock} color="yellow" subtitle={"students came late today"} />
             </div>
 
-            {/* Recent Attendance Trends */}
             <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
               <div className="flex items-center space-x-3 mb-6">
-                <TrendingUp className="h-6 w-6 text-green-600" />
+                <TrendingUp className="h-6 w-6 text-blue-600" />
                 <h3 className="text-lg font-semibold text-gray-900">Recent Attendance Trends</h3>
               </div>
               
               <div className="space-y-4">
-                {/* Map over the recentAttendance array from the stats object */}
                 {(stats.recentAttendance || []).map((record, index) => (
                   <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50 rounded-lg space-y-2 sm:space-y-0">
                     <div className="flex items-center space-x-4">
                       <Calendar className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">
-                          {/* This tells the browser to treat the date string "2025-10-31" as
-                            midnight UTC, and then format it in UTC, ignoring your local timezone.
-                          */}
                           {new Date(record.date + 'T00:00:00.000Z').toLocaleDateString('en-US', { 
                             weekday: 'long', 
                             month: 'short', 
                             day: 'numeric',
-                            timeZone: 'UTC' // <-- ADD THIS LINE
+                            timeZone: 'UTC'
                           })}
                         </p>
                       </div>

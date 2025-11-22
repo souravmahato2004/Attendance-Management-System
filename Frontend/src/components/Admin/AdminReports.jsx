@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Download, Calendar, FileText, TrendingUp, Users, BookOpen, GraduationCap } from 'lucide-react';
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const AdminReports = () => {
-  // 1. Fix toast function name
   const { success, eror } = useToast(); 
-
-  // 2. State for dropdowns (will hold objects)
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -19,30 +16,27 @@ const AdminReports = () => {
   const [reportData, setReportData] = useState({
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
-    program: '', // Will store ID
-    department: '', // Will store ID
-    semester: '' // Will store number
+    program: '',
+    department: '',
+    semester: ''
   });
 
-  // 3. Load all dropdown data from the API
   useEffect(() => {
     const loadDropdownData = async () => {
       try {
         setLoading(true);
-        // Fetch all in parallel
         const [programsData, departmentsData, semestersData] = await Promise.all([
           adminService.getPrograms(),
           adminService.getDepartments(),
-          adminService.getSemesters() // Call new service function
+          adminService.getSemesters()
         ]);
         
-        setPrograms(programsData); // Expects [{id, name}]
-        setDepartments(departmentsData); // Expects [{id, name}]
-        setSemesters(semestersData); // Expects [1, 2, 3...]
+        setPrograms(programsData);
+        setDepartments(departmentsData);
+        setSemesters(semestersData);
 
-        // Create dynamic year list
         const currentYear = new Date().getFullYear();
-        setYears(Array.from({ length: 5 }, (_, i) => currentYear - i)); // [2025, 2024, ...]
+        setYears(Array.from({ length: 5 }, (_, i) => currentYear - i));
         
       } catch (error) {
         eror('Failed to load page data');
@@ -52,7 +46,7 @@ const AdminReports = () => {
     };
     
     loadDropdownData();
-  }, [eror]); // Added eror dependency
+  }, [eror]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -63,7 +57,6 @@ const AdminReports = () => {
   };
 
   const handleGenerateReport = async () => {
-    // 4. Validate that IDs/values are selected
     if (!reportData.program || !reportData.department || !reportData.semester) {
       eror('Please select program, department, and semester');
       return;
@@ -74,9 +67,9 @@ const AdminReports = () => {
       await adminService.generateMonthlyReport(
         parseInt(reportData.month),
         parseInt(reportData.year),
-        reportData.program, // This is program_id
-        reportData.department, // This is department_id
-        reportData.semester // This is semester number
+        reportData.program,
+        reportData.department,
+        reportData.semester
       );
       success('Report generated successfully');
     } catch (error) {
@@ -101,7 +94,6 @@ const AdminReports = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Report Generation</h2>
         <p className="text-gray-600">Generate monthly attendance reports for programs and semesters</p>
@@ -110,8 +102,8 @@ const AdminReports = () => {
       {/* Report Generation Form */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center space-x-3 mb-6">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <FileText className="h-6 w-6 text-blue-600" />
+          <div className="p-2 bg-green-100 rounded-lg">
+            <FileText className="h-6 w-6 text-green-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">Monthly Attendance Report</h3>
         </div>
@@ -126,7 +118,7 @@ const AdminReports = () => {
                 name="month"
                 value={reportData.month}
                 onChange={handleInputChange}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
               >
                 {monthNames.map((month, index) => (
                   <option key={index} value={index}>{month}</option>
@@ -142,7 +134,7 @@ const AdminReports = () => {
               name="year"
               value={reportData.year}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               {years.map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -157,7 +149,7 @@ const AdminReports = () => {
               name="program"
               value={reportData.program} // This is the ID
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               <option value="">Select Program</option>
               {programs.map(program => (
@@ -173,7 +165,7 @@ const AdminReports = () => {
               name="department"
               value={reportData.department} // This is the ID
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               <option value="">Select Department</option>
               {departments.map(dept => (
@@ -189,7 +181,7 @@ const AdminReports = () => {
               name="semester"
               value={reportData.semester} // This is the number
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               <option value="">Select Semester</option>
               {semesters.map(semester => (
@@ -203,7 +195,7 @@ const AdminReports = () => {
           <button
             onClick={handleGenerateReport}
             disabled={generating || !reportData.program || !reportData.department || !reportData.semester}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
             {generating ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>

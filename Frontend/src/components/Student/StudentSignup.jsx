@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, User, Mail, Lock, Hash, GraduationCap, Eye, EyeOff, Calendar } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -44,7 +44,7 @@ const StudentSignup = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
-  const { success, error } = useToast();
+  const { success, eror } = useToast();
 
   const validateField = (name, value) => {
     let error = '';
@@ -118,21 +118,21 @@ const StudentSignup = () => {
       success('Account created successfully! Please sign in.');
       navigate('/student/login');
     } catch (err) {
-      error(err.message || 'Signup failed. The email or roll number might already be in use.');
+      eror(err.message || 'Signup failed. The email or roll number might already be in use.');
     } finally {
       setLoading(false);
     }
   };
 
   // Base input styles for reuse
-  const baseInputStyles = "appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm transition-shadow duration-200";
+  const baseInputStyles = "appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm transition-shadow duration-200";
   const errorInputStyles = "border-red-500 focus:ring-red-500 focus:border-red-500";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="outfit min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 via-white to-pink-200 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-20 w-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center shadow-lg animate-bounce-in">
+          <div className="mx-auto h-20 w-20 bg-red-800 rounded-full flex items-center justify-center shadow-lg animate-bounce-in">
             <BookOpen className="h-10 w-10 text-white" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Join Student Portal</h2>
@@ -140,10 +140,11 @@ const StudentSignup = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-2xl p-8 border border-gray-100">
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
             
             {/* Form Fields */}
-            {[{name: 'name', placeholder: 'Full Name', type: 'text', icon: User}, {name: 'email', placeholder: 'Email Address', type: 'email', icon: Mail}, {name: 'rollNumber', placeholder: 'Roll Number', type: 'text', icon: Hash}].map(field => (
+            <div className='grid grid-cols-2 space-x-4 space-y-4'>
+              {[{name: 'name', placeholder: 'Full Name', type: 'text', icon: User}, {name: 'email', placeholder: 'Email Address', type: 'email', icon: Mail}, {name: 'rollNumber', placeholder: 'Roll Number', type: 'text', icon: Hash}].map(field => (
               <div key={field.name}>
                 <label htmlFor={field.name} className="sr-only">{field.placeholder}</label>
                 <div className="relative">
@@ -201,34 +202,27 @@ const StudentSignup = () => {
               {fieldErrors.semester && <p className="mt-1 text-xs text-red-600">{fieldErrors.semester}</p>}
             </div>
 
-
-            {/* This part goes in the component where you render the form/subjects */}
-
           {formData.program && formData.department && formData.semester && (
-            <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 mt-4">
-              <p className="text-sm text-purple-700 font-medium mb-2">
+            <div className="bg-red-50 rounded-lg p-4 border border-red-200 mt-4 col-span-full">
+              <p className="text-sm text-red-700 font-medium mb-2">
                 Subjects for {formData.program} - {formData.department} - {formData.semester}:
               </p>
               
-              {/* Show loading message */}
               {isLoadingSubjects && (
-                <p className="text-sm text-purple-500">Loading subjects...</p>
+                <p className="text-sm text-red-500">Loading subjects...</p>
               )}
 
-              {/* Show subjects once loaded */}
               {!isLoadingSubjects && subjects.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {subjects.map(subject => (
-                    <span key={subject.subject_id} className="px-2 py-1 bg-white border border-purple-200 rounded text-xs text-purple-700">
+                    <span key={subject.subject_id} className="px-2 py-1 bg-white border border-red-200 rounded text-xs text-red-700">
                       {subject.subject_name}
                     </span>
                   ))}
                 </div>
               )}
-
-              {/* Show message if no subjects are found */}
               {!isLoadingSubjects && subjects.length === 0 && (
-                <p className="text-sm text-purple-500">No subjects found for this selection.</p>
+                <p className="text-sm text-red-500">No subjects found for this selection.</p>
               )}
             </div>
           )}
@@ -257,14 +251,15 @@ const StudentSignup = () => {
                 {fieldErrors[field.name] && <p className="mt-1 text-xs text-red-600">{fieldErrors[field.name]}</p>}
               </div>
             ))}
+            </div>
             
-            <button type="submit" disabled={loading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md">
+            <button type="submit" disabled={loading} className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-red-800 focus disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md">
               {loading ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> : 'Create Account'}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <Link to="/student/login" className="text-sm text-purple-600 hover:text-purple-500 font-medium transition-colors duration-200">
+            <Link to="/student/login" className="text-sm text-red-800 hover:text-red-600 font-medium transition-colors duration-200">
               Already have an account? Sign In
             </Link>
           </div>

@@ -29,13 +29,14 @@ const TeacherLogin = () => {
   };
 
   // Base input field styles for reuse
-  const inputFieldStyles = "appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm transition-shadow duration-200";
+  const inputFieldStyles = "appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-shadow duration-200";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="outfit min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-200 via-white to-blue-200 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="hidden flex-none w-3/5 h-114 bg-cover bg-center bg-no-repeat md:flex" style={{backgroundImage: "url('https://placement.nitsikkim.ac.in/images/about/campus.png')"}}></div>
+      <div className="max-w-md space-y-8 md:mr-36">
         <div className="text-center">
-          <div className="mx-auto h-20 w-20 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg animate-bounce-in">
+          <div className="mx-auto h-20 w-20 bg-blue-500 rounded-full flex items-center justify-center shadow-lg animate-bounce-in">
             <GraduationCap className="h-10 w-10 text-white" />
           </div>
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Teacher Portal</h2>
@@ -54,7 +55,6 @@ const TeacherLogin = () => {
                   name="email"
                   type="email"
                   required
-                  // FIXED: Replaced 'input-field' with Tailwind classes
                   className={inputFieldStyles}
                   placeholder="Email address"
                   value={credentials.email}
@@ -82,7 +82,6 @@ const TeacherLogin = () => {
                 />
                 <button
                   type="button"
-                  // FIXED: Added z-10 to prevent click issues
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                   onClick={() => setShowPassword(!showPassword)}
                 >
@@ -98,12 +97,12 @@ const TeacherLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-md"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
               ) : (
-                'Sign in'
+                'Login'
               )}
             </button>
           </form>
@@ -121,25 +120,19 @@ const TeacherLogin = () => {
             <div className="mt-6 flex justify-center space-x-4">
               <Link
                 to="/admin/login"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium transition-colors duration-200"
+                className="text-sm text-green-600 hover:text-green-500 font-medium transition-colors duration-200"
               >
                 Admin Login
               </Link>
               <span className="text-gray-300">|</span>
               <Link
                 to="/student/login"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium transition-colors duration-200"
+                className="text-sm text-red-800 hover:text-red-600 font-medium transition-colors duration-200"
               >
                 Student Login
               </Link>
             </div>
           </div>
-        </div>
-
-        <div className="text-center">
-          <p className="text-xs text-gray-500">
-            Demo credentials: john@university.com / temp123
-          </p>
         </div>
       </div>
     </div>

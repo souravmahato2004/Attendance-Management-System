@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Calendar, Filter, Percent, Check, X, Clock } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,26 +11,23 @@ const AttendanceReports = () => {
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   
-  // --- FIX 1: Correctly get today's local date ---
   const getLocalDate = () => {
     const todayDate = new Date();
     const year = todayDate.getFullYear();
     const month = (todayDate.getMonth() + 1).toString().padStart(2, '0');
     const day = todayDate.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`; // This will be '2025-10-31' for you
+    return `${year}-${month}-${day}`;
   };
   
   const today = getLocalDate();
-  // --- End Fix 1 ---
 
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState(today); // Default end date to today
+  const [endDate, setEndDate] = useState(today);
   
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load subjects for the dropdown
   useEffect(() => {
     const loadSubjects = async () => {
       try {
@@ -48,7 +45,6 @@ const AttendanceReports = () => {
     }
   }, [user?.teacher_id]);
 
-  // Handle report generation
   const handleGenerateReport = async () => {
     if (!selectedSubject || !startDate || !endDate) {
       eror("Please select a subject, start date, and end date.");
@@ -69,14 +65,12 @@ const AttendanceReports = () => {
     }
   };
   
-  // Calculate percentage
   const calculatePercentage = (present, late, total) => {
     if (total === 0) return 0;
     const attended = present + late; 
     return Math.round((attended / total) * 100);
   };
 
-  // Calculate total summary
   const reportSummary = useMemo(() => {
     return reportData.reduce((acc, student) => {
       acc.total_classes += parseInt(student.total_classes, 10);
@@ -87,17 +81,13 @@ const AttendanceReports = () => {
     }, { total_classes: 0, total_present: 0, total_absent: 0, total_late: 0 });
   }, [reportData]);
   
-  // --- FIX 2: Handle Start Date change ---
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
     setStartDate(newStartDate);
-    // If the new start date is after the current end date,
-    // update the end date to match.
     if (endDate && newStartDate > endDate) {
       setEndDate(newStartDate);
     }
   };
-  // --- End Fix 2 ---
 
   return (
     <div className="p-6">
@@ -105,9 +95,7 @@ const AttendanceReports = () => {
         <h2 className="text-2xl font-bold text-gray-900">Attendance Reports</h2>
       </div>
       
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-        {/* Class Selector */}
         <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
           <div className="flex items-center space-x-2">
@@ -115,7 +103,7 @@ const AttendanceReports = () => {
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-transparent bg-white"
             >
               <option value="">Select a subject</option>
               {subjects.map(sub => (
@@ -127,7 +115,6 @@ const AttendanceReports = () => {
           </div>
         </div>
         
-        {/* Start Date */}
         <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
           <div className="flex items-center space-x-2">
@@ -137,7 +124,7 @@ const AttendanceReports = () => {
               value={startDate}
               onChange={handleStartDateChange} // Use the new handler
               max={today} // Prevents selecting future dates
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
         </div>
@@ -151,9 +138,9 @@ const AttendanceReports = () => {
               type="date" 
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              min={startDate} // <-- 3. ADD THIS: Prevents end date being before start date
-              max={today} // Prevents selecting future dates
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              min={startDate}
+              max={today}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
           </div>
         </div>

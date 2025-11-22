@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'; // 1. Import useCallback
+import { useState, useEffect, useCallback } from 'react';
 import Header from '../Common/Header';
 import StatCard from '../Common/StatCard';
 import AttendanceCalendar from './AttendanceCalendar';
@@ -23,10 +23,9 @@ const StudentDashboard = () => {
   const [subjects, setSubjects] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('');
 
-  // 2. Wrap loadDashboardData in useCallback
   const loadDashboardData = useCallback(async () => {
     try {
-      setLoading(true); // Set loading true for stats fetch
+      setLoading(true);
       const data = await studentService.getDashboardStats(user.student_id, selectedSubject);
       setStats(data);
     } catch (error) {
@@ -34,9 +33,8 @@ const StudentDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.student_id, selectedSubject]); // Dependencies
+  }, [user?.student_id, selectedSubject]);
 
-  // 3. Wrap loadSubjects in useCallback
   const loadSubjects = useCallback(async () => {
     if (user && user.program_name && user.department_name && user.semester) {
       try {
@@ -59,16 +57,14 @@ const StudentDashboard = () => {
     } else {
       setLoading(false);
     }
-  }, [user]); // Dependency
+  }, [user]);
 
-  // 4. Update useEffect to include loadSubjects
   useEffect(() => {
     if (user) {
       loadSubjects();
     }
-  }, [user, loadSubjects]); // Add function to dependency array
+  }, [user, loadSubjects]);
 
-  // 5. Update useEffect to include loadDashboardData
   useEffect(() => {
     if (user?.student_id && selectedSubject) {
       loadDashboardData();
@@ -76,28 +72,27 @@ const StudentDashboard = () => {
     if (!selectedSubject) {
       setStats({ totalDays: 0, presentDays: 0, absentDays: 0, lateDays: 0, attendancePercentage: 0, currentStreak: 0 });
     }
-  }, [selectedSubject, user?.student_id, loadDashboardData]); // Add function to dependency array
+  }, [selectedSubject, user?.student_id, loadDashboardData]);
 
   
-  // This is the initial page spinner
   if (!user || (loading && subjects.length === 0)) { 
     return (
       <div className="min-h-screen bg-gray-50">
         <Header title="Student Dashboard" />
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-500 border-t-transparent"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="outfit min-h-screen bg-gray-50">
       <Header title="Student Dashboard" />
       
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl p-6 text-white mb-6">
+        <div className="bg-red-800 rounded-xl p-6 text-white mb-6">
           <h2 className="text-2xl font-bold mb-4">Welcome back, {user.name}!</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -125,7 +120,7 @@ const StudentDashboard = () => {
           {/* Subject Dropdown */}
           {subjects?.length > 0 ? (
             <div className="mt-4">
-              <label htmlFor="subject-select" className="text-sm text-purple-100 mr-2">
+              <label htmlFor="subject-select" className="text-sm text-red-100 mr-2">
                 Viewing Attendance For:
               </label>
               <select
@@ -153,7 +148,7 @@ const StudentDashboard = () => {
               onClick={() => setActiveTab('overview')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'overview'
-                  ? 'border-purple-500 text-purple-600'
+                  ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -163,7 +158,7 @@ const StudentDashboard = () => {
               onClick={() => setActiveTab('attendance')}
               className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                 activeTab === 'attendance'
-                  ? 'border-purple-500 text-purple-600'
+                  ? 'border-red-500 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
@@ -188,28 +183,28 @@ const StudentDashboard = () => {
                 value={loading ? '...' : stats.totalDays}
                 icon={Calendar}
                 color="blue"
-                subtitle="Total classes held"
+                subtitle="Total classes held this month"
               />
               <StatCard
                 title="Present"
                 value={loading ? '...' : stats.presentDays}
                 icon={Check}
                 color="green"
-                subtitle="Days marked present"
+                subtitle="Total days marked present"
               />
               <StatCard
                 title="Absent"
                 value={loading ? '...' : stats.absentDays}
                 icon={X}
                 color="red"
-                subtitle="Days marked absent"
+                subtitle="Total days marked absent"
               />
               <StatCard
                 title="Late"
                 value={loading ? '...' : stats.lateDays}
                 icon={Clock}
                 color="yellow"
-                subtitle="Days marked late"
+                subtitle="Total days marked late"
               />
             </div>
 
@@ -229,22 +224,22 @@ const StudentDashboard = () => {
                     barColor = 'bg-gray-200';
                   } else if (stats.attendancePercentage >= 90) {
                     currentGoal = 100;
-                    goalMessage = <p className="text-green-600 font-medium">🎉 Excellent! You're aiming for a perfect 100%!</p>;
+                    goalMessage = <p className="text-green-600 font-medium">Excellent! You're aiming for a perfect 100%!</p>;
                     barColor = 'bg-green-500';
                   } else if (stats.attendancePercentage >= 75) {
                     currentGoal = 90;
-                    goalMessage = <p className="text-yellow-600 font-medium">📈 Great! Now push for the next milestone: 90%.</p>;
+                    goalMessage = <p className="text-yellow-600 font-medium">Great! Now push for the next milestone: 90%.</p>;
                     barColor = 'bg-yellow-500';
                   } else {
                     currentGoal = 75;
-                    goalMessage = <p className="text-red-600 font-medium">⚠️ You are below the 75% requirement. Let's get you there!</p>;
+                    goalMessage = <p className="text-red-600 font-medium">You are below the 75% requirement. Let's get you there!</p>;
                     barColor = 'bg-red-500';
                   }
 
                   return (
                     <>
                       <div className="flex items-center space-x-3 mb-4">
-                        <Target className="h-6 w-6 text-purple-600" />
+                        <Target className="h-6 w-6 text-green-600" />
                         <h3 className="text-lg font-semibold text-gray-900">Attendance Goal ({currentGoal}%)</h3>
                       </div>
                       
@@ -274,7 +269,7 @@ const StudentDashboard = () => {
               {/* Subject Summary */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center space-x-3 mb-4">
-                  <BookOpen className="h-6 w-6 text-blue-600" />
+                  <BookOpen className="h-6 w-6 text-red-600" />
                   <h3 className="text-lg font-semibold text-gray-900">Subject Summary</h3>
                 </div>
                 
@@ -283,11 +278,11 @@ const StudentDashboard = () => {
                 ) : (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Attended (Present + Late)</span>
+                      <span className="text-sm text-gray-600">Classes Attended (Present + Late)</span>
                       <span className="font-semibold text-gray-900">{stats.presentDays + stats.lateDays} days</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Absent</span>
+                      <span className="text-sm text-gray-600">Classes Absent</span>
                       <span className="font-semibold text-gray-900">{stats.absentDays} days</span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -300,7 +295,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            {/* <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <button 
@@ -336,7 +331,7 @@ const StudentDashboard = () => {
                   </div>
                 </button>
               </div>
-            </div>
+            </div> */}
           </div>
         )}
 

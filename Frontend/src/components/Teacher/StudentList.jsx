@@ -1,23 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Filter, Users, Book, Building, GraduationCap } from 'lucide-react'; // Added new icons
+import { useState, useEffect } from 'react';
+import { Filter, Users, Book, Building, GraduationCap } from 'lucide-react';
 import { teacherService } from '../../services/teacherService';
 import { useAuth } from '../../contexts/AuthContext';
 
 const StudentList = () => {
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
-  const [selectedSubject, setSelectedSubject] = useState(''); // Default to empty
+  const [selectedSubject, setSelectedSubject] = useState('');
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 1. Load subjects (for the dropdown)
   useEffect(() => {
     const loadSubjects = async () => {
       try {
         const subjectData = await teacherService.getTeacherSubjects(user.teacher_id); 
         setSubjects(subjectData);
-        setSelectedSubject(''); // Start with no subject selected
+        setSelectedSubject('');
       } catch (err) {
         setError('Failed to load classes.');
       }
@@ -29,9 +28,7 @@ const StudentList = () => {
     
   }, [user?.teacher_id]);
 
-  // 2. Load students (when selectedSubject changes)
   useEffect(() => {
-    // If no subject is selected, clear the student list and stop.
     if (!selectedSubject) {
       setStudents([]);
       return;
@@ -41,8 +38,6 @@ const StudentList = () => {
       try {
         setLoading(true);
         setError('');
-        // This service will now return:
-        // [{ student_id, roll_number, name, email, semester, program_name, department_name }, ...]
         const studentData = await teacherService.getStudentsBySubject(selectedSubject);
         setStudents(studentData);
       } catch (err) {
@@ -65,7 +60,7 @@ const StudentList = () => {
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-transparent bg-white"
           >
             <option value="">Select a subject</option>
             {subjects.map(sub => (
@@ -77,12 +72,10 @@ const StudentList = () => {
         </div>
       </div>
 
-      {/* Student Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {/* --- UPDATED COLUMNS --- */}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll Number</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
@@ -109,7 +102,7 @@ const StudentList = () => {
                   {/* --- UPDATED ROW DATA --- */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center text-white font-medium text-sm mr-4 flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-sm mr-4 flex-shrink-0">
                         {student.name.charAt(0)}
                       </div>
                       <div className="text-sm font-medium text-gray-900">{student.name}</div>

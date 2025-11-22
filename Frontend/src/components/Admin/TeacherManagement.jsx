@@ -24,7 +24,7 @@ const TeacherManagement = () => {
     email: '',
     password: '',
     departmentId: '',
-    subjectIds: [] // multiple subjects
+    subjectIds: []
   });
 
   useEffect(() => {
@@ -33,7 +33,6 @@ const TeacherManagement = () => {
     loadSubjects();
   }, []);
 
-  // Fetch teachers
   const loadTeachers = async () => {
     try {
       setLoading(true);
@@ -46,8 +45,6 @@ const TeacherManagement = () => {
     }
   };
 
-
-  // Fetch departments
   const loadDepartments = async () => {
     try {
       const data = await adminService.getDepartments();
@@ -57,7 +54,6 @@ const TeacherManagement = () => {
     }
   };
 
-  // Fetch subjects
   const loadSubjects = async () => {
     try {
       const data = await adminService.getAllSubjects();
@@ -75,21 +71,18 @@ const TeacherManagement = () => {
     }));
   };
 
-  // Handle multiple subject selection
   const handleSubjectsChange = (e) => {
   const { value, checked } = e.target;
-  const id = Number(value); // convert to number so it matches your DB IDs
+  const id = Number(value);
 
   setFormData((prev) => {
     let updatedSubjects;
 
     if (checked) {
-      // Add only if not already present
       updatedSubjects = prev.subjectIds.includes(id)
         ? prev.subjectIds
         : [...prev.subjectIds, id];
     } else {
-      // Remove when unchecked
       updatedSubjects = prev.subjectIds.filter((sid) => sid !== id);
     }
 
@@ -157,7 +150,6 @@ const TeacherManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Teacher Management</h2>
@@ -165,14 +157,13 @@ const TeacherManagement = () => {
         </div>
         <button
           onClick={() => setShowAddForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
           <span>Add Teacher</span>
         </button>
       </div>
 
-      {/* Add/Edit Form */}
       {showAddForm && (
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex justify-between items-center mb-6">
@@ -186,7 +177,6 @@ const TeacherManagement = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Teacher ID */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Teacher ID *</label>
                 <div className="relative">
@@ -197,13 +187,12 @@ const TeacherManagement = () => {
                     value={formData.teacherId}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                     placeholder="Enter teacher ID"
                   />
                 </div>
               </div>
 
-              {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <div className="relative">
@@ -214,13 +203,12 @@ const TeacherManagement = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                     placeholder="Enter teacher name"
                   />
                 </div>
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                 <div className="relative">
@@ -231,13 +219,12 @@ const TeacherManagement = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                     placeholder="Enter email address"
                   />
                 </div>
               </div>
 
-              {/* Password */}
               {!editingTeacher && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
@@ -249,14 +236,13 @@ const TeacherManagement = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       required
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                       placeholder="Enter password"
                     />
                   </div>
                 </div>
               )}
 
-              {/* Department */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
                 <div className="relative">
@@ -266,7 +252,7 @@ const TeacherManagement = () => {
                     value={formData.departmentId}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                   >
                     <option value="">Select a department</option>
                     {departments.map(dept => (
@@ -278,12 +264,10 @@ const TeacherManagement = () => {
                 </div>
               </div>
 
-              {/* Subjects Multi-select */}
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Assign Subjects *
                 </label>
-                {/* Subjects Multi-select (Improved) */}
                 <div className="md:col-span-2">
 
                   <div className="relative">
@@ -293,7 +277,7 @@ const TeacherManagement = () => {
                       placeholder="Search subjects..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent mb-2"
                     />
 
                     <div className="border border-gray-300 rounded-lg h-64 overflow-y-auto p-2">
@@ -308,7 +292,7 @@ const TeacherManagement = () => {
                               value={subject.id}
                               checked={formData.subjectIds.includes(subject.id)}
                               onChange={handleSubjectsChange}
-                              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                              className="h-4 w-4 text-green-600 border-gray-300 rounded"
                             />
                             <span className="text-sm text-gray-700">{subject.name}</span>
                           </label>
@@ -328,7 +312,7 @@ const TeacherManagement = () => {
                         return (
                           <span
                             key={id}
-                            className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
+                            className="flex items-center gap-1 bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full"
                           >
                             {subject?.name}
                             <button
@@ -356,13 +340,13 @@ const TeacherManagement = () => {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 text-red-700 bg-red-100 rounded-lg hover:bg-red-200"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
               >
                 <Save className="h-4 w-4" />
                 <span>{editingTeacher ? 'Update' : 'Add'} Teacher</span>
@@ -372,7 +356,6 @@ const TeacherManagement = () => {
         </div>
       )}
 
-      {/* Teachers List */}
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Teachers List</h3>
@@ -417,7 +400,7 @@ const TeacherManagement = () => {
                     </td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button onClick={() => handleEdit(teacher)} className="text-blue-600 hover:text-blue-900">
+                        <button onClick={() => handleEdit(teacher)} className="text-green-600 hover:text-green-700">
                           <Edit className="h-4 w-4" />
                         </button>
                         <button onClick={() => handleDelete(teacher.teacher_id)} className="text-red-600 hover:text-red-900">

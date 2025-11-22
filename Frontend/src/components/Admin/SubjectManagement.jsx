@@ -1,30 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, BookOpen, Save, X, Search } from 'lucide-react';
-// import { useApp } from '../../contexts/AppContext'; // REMOVED
 import { adminService } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 
 const SubjectManagement = () => {
-  // State to hold data (as objects)
   const [programs, setPrograms] = useState([]);
-  const [semesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]); // Static list
+  const [semesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]);
   const [departments, setDepartments] = useState([]);
-  const [allSubjects, setAllSubjects] = useState([]); // Master list
-  
-  const [selectedProgram, setSelectedProgram] = useState(''); // Stores Program ID
-  const [selectedDepartment, setSelectedDepartment] = useState(''); // Stores Dept ID
-  const [selectedSemester, setSelectedSemester] = useState(''); // Stores Semester number
-
-  const [currentSubjects, setCurrentSubjects] = useState([]); // Subjects for selected course
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [selectedProgram, setSelectedProgram] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [currentSubjects, setCurrentSubjects] = useState([]);
   const [newSubject, setNewSubject] = useState('');
-  
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // 1. CORRECTED: Using 'eror' as defined in your context
   const { success, eror } = useToast();
-
-  // --- Effects ---
 
   useEffect(() => {
     loadInitialData();
@@ -38,15 +29,13 @@ const SubjectManagement = () => {
     }
   }, [selectedProgram, selectedDepartment, selectedSemester]);
 
-  // --- Data Fetching Functions ---
-
   const loadInitialData = async () => {
     try {
       setLoading(true);
       const [programsData, departmentsData, allSubjectsData] = await Promise.all([
-        adminService.getPrograms(),      // Using adminService
-        adminService.getDepartments(),   // Using adminService
-        adminService.getAllSubjects()    // Using adminService
+        adminService.getPrograms(),
+        adminService.getDepartments(),
+        adminService.getAllSubjects()
       ]);
       
       setPrograms(programsData);
@@ -54,7 +43,6 @@ const SubjectManagement = () => {
       setAllSubjects(allSubjectsData);
 
     } catch (err) {
-      // 2. CORRECTED: Using 'eror'
       eror(`Failed to load initial data: ${err.message}`);
     } finally {
       setLoading(false);
@@ -68,25 +56,20 @@ const SubjectManagement = () => {
         selectedDepartment,
         selectedSemester
       );
-      setCurrentSubjects(subjects); // Expects [{ subject_id, subject_name }]
+      setCurrentSubjects(subjects);
     } catch (err) {
-      // 3. CORRECTED: Using 'eror'
       eror(`Failed to load subjects: ${err.message}`);
     }
   };
 
-  // --- Event Handlers ---
-
   const handleAddSubject = async () => {
     const subjectName = newSubject.trim();
     if (!subjectName) {
-      // 4. CORRECTED: Using 'eror'
       eror('Please enter a subject name');
       return;
     }
 
     if (currentSubjects.some(s => s.subject_name.toLowerCase() === subjectName.toLowerCase())) {
-      // 5. CORRECTED: Using 'eror'
       eror('Subject already exists for this course');
       return;
     }
@@ -109,7 +92,6 @@ const SubjectManagement = () => {
       success('Subject added successfully');
 
     } catch (err) {
-      // 6. CORRECTED: Using 'eror'
       eror(`Failed to add subject: ${err.message}`);
     }
   };
@@ -128,7 +110,6 @@ const SubjectManagement = () => {
         
         success('Subject removed successfully');
       } catch (err) {
-        // 7. CORRECTED: Using 'eror'
         eror(`Failed to remove subject: ${err.message}`);
       }
     }
@@ -141,7 +122,7 @@ const SubjectManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
       </div>
     );
   }
@@ -170,7 +151,7 @@ const SubjectManagement = () => {
                 setSelectedDepartment('');
                 setSelectedSemester('');
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               <option value="">Select a program</option>
               {programs.map(program => (
@@ -188,7 +169,7 @@ const SubjectManagement = () => {
                 setSelectedDepartment(e.target.value);
                 setSelectedSemester('');
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
               disabled={!selectedProgram}
             >
               <option value="">Select a department</option>
@@ -204,7 +185,7 @@ const SubjectManagement = () => {
             <select
               value={selectedSemester}
               onChange={(e) => setSelectedSemester(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
               disabled={!selectedProgram || !selectedDepartment}
             >
               <option value="">Select a semester</option>
@@ -270,7 +251,7 @@ const SubjectManagement = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search subjects..."
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                 />
               </div>
             </div>
@@ -300,12 +281,12 @@ const SubjectManagement = () => {
                   value={newSubject}
                   onChange={(e) => setNewSubject(e.target.value)}
                   placeholder="Enter new subject name to create and add"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
                 />
               </div>
               <button
                 onClick={handleAddSubject}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
               >
                 <Plus className="h-4 w-4" />
                 <span>Add Subject</span>
