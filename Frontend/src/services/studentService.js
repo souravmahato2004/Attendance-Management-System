@@ -200,4 +200,29 @@ export const studentService = {
     };
   },
 
+  deleteAccount: async (studentId) => {
+    const API_URL = `http://localhost:3001/api/student/delete-account/${studentId}`;
+    
+    try {
+      const response = await fetch(API_URL, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          // TODO: Add Authorization header if using tokens
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete account.');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('deleteAccount API Error:', error);
+      throw error;
+    }
+  },
+
 };

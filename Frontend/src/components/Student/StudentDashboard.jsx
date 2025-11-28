@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import Header from '../Common/Header';
 import StatCard from '../Common/StatCard';
 import AttendanceCalendar from './AttendanceCalendar';
-import { Clock, Calendar, TrendingUp, Award, Target, BookOpen, Check, X } from 'lucide-react';
+import { Clock, Calendar, Target, BookOpen, Check, X, Settings, Trash2, AlertTriangle } from 'lucide-react';
 import { studentService } from '../../services/studentService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { success, eror } = useToast();
+
   const [stats, setStats] = useState({
     totalDays: 0,
     presentDays: 0,
@@ -74,7 +77,29 @@ const StudentDashboard = () => {
     }
   }, [selectedSubject, user?.student_id, loadDashboardData]);
 
-  
+  // --- NEW: Handle Account Deletion ---
+  const handleDeleteAccount = async () => {
+    if (window.confirm("⚠️ WARNING: Are you sure you want to delete your account?\nThis action is PERMANENT. All your attendance records and personal data will be wiped immediately.")) {
+      
+      // Optional: Second layer of security
+      const confirmation = window.prompt("To confirm deletion, please type 'DELETE' below:");
+      
+      if (confirmation === 'DELETE') {
+        try {
+          setLoading(true);
+          await studentService.deleteAccount(user.student_id);
+          success('Your account has been successfully deleted.');
+          logout(); // Redirect to login
+        } catch (err) {
+          setLoading(false);
+          eror(`Failed to delete account: ${err.message}`);
+        }
+      } else if (confirmation !== null) {
+        eror("Deletion cancelled. You did not type 'DELETE' correctly.");
+      }
+    }
+  };
+
   if (!user || (loading && subjects.length === 0)) { 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -91,7 +116,7 @@ const StudentDashboard = () => {
       <Header title="Student Dashboard" />
       
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Welcome Section */}
+        {/* Welcome Section - Keeping your Red Theme */}
         <div className="bg-red-800 rounded-xl p-6 text-white mb-6">
           <h2 className="text-2xl font-bold mb-4">Welcome back, {user.name}!</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -117,7 +142,6 @@ const StudentDashboard = () => {
             </div>
           </div>
           
-          {/* Subject Dropdown */}
           {subjects?.length > 0 ? (
             <div className="mt-4">
               <label htmlFor="subject-select" className="text-sm text-red-100 mr-2">
@@ -125,7 +149,7 @@ const StudentDashboard = () => {
               </label>
               <select
                 id="subject-select"
-                value={selectedSubject} // Value is the subject_id
+                value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
                 className="bg-white/20 border border-white/40 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-white transition-all duration-200"
               >
@@ -141,7 +165,7 @@ const StudentDashboard = () => {
           )}
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs - Keeping Red Theme */}
         <div className="mb-6">
           <nav className="flex space-x-8" aria-label="Tabs">
             <button
@@ -164,6 +188,17 @@ const StudentDashboard = () => {
             >
               Attendance Calendar
             </button>
+            {/* --- NEW: Settings Tab --- */}
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                activeTab === 'settings'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Settings
+            </button>
           </nav>
         </div>
 
@@ -176,41 +211,39 @@ const StudentDashboard = () => {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
                 title="Total Classes"
                 value={loading ? '...' : stats.totalDays}
                 icon={Calendar}
                 color="blue"
-                subtitle="Total classes held this month"
+                subtitle="Total classes held"
               />
               <StatCard
                 title="Present"
                 value={loading ? '...' : stats.presentDays}
                 icon={Check}
                 color="green"
-                subtitle="Total days marked present"
+                subtitle="Days marked present"
               />
               <StatCard
                 title="Absent"
                 value={loading ? '...' : stats.absentDays}
                 icon={X}
                 color="red"
-                subtitle="Total days marked absent"
+                subtitle="Days marked absent"
               />
               <StatCard
                 title="Late"
                 value={loading ? '...' : stats.lateDays}
                 icon={Clock}
                 color="yellow"
-                subtitle="Total days marked late"
+                subtitle="Days marked late"
               />
             </div>
 
             {/* Performance Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
               {/* Attendance Goal */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 {(() => {
@@ -224,22 +257,22 @@ const StudentDashboard = () => {
                     barColor = 'bg-gray-200';
                   } else if (stats.attendancePercentage >= 90) {
                     currentGoal = 100;
-                    goalMessage = <p className="text-green-600 font-medium">Excellent! You're aiming for a perfect 100%!</p>;
+                    goalMessage = <p className="text-green-600 font-medium">🎉 Excellent! You're aiming for a perfect 100%!</p>;
                     barColor = 'bg-green-500';
                   } else if (stats.attendancePercentage >= 75) {
                     currentGoal = 90;
-                    goalMessage = <p className="text-yellow-600 font-medium">Great! Now push for the next milestone: 90%.</p>;
+                    goalMessage = <p className="text-yellow-600 font-medium">📈 Great! Now push for the next milestone: 90%.</p>;
                     barColor = 'bg-yellow-500';
                   } else {
                     currentGoal = 75;
-                    goalMessage = <p className="text-red-600 font-medium">You are below the 75% requirement. Let's get you there!</p>;
+                    goalMessage = <p className="text-red-600 font-medium">⚠️ You are below the 75% requirement. Let's get you there!</p>;
                     barColor = 'bg-red-500';
                   }
 
                   return (
                     <>
                       <div className="flex items-center space-x-3 mb-4">
-                        <Target className="h-6 w-6 text-green-600" />
+                        <Target className="h-6 w-6 text-purple-600" />
                         <h3 className="text-lg font-semibold text-gray-900">Attendance Goal ({currentGoal}%)</h3>
                       </div>
                       
@@ -269,7 +302,7 @@ const StudentDashboard = () => {
               {/* Subject Summary */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center space-x-3 mb-4">
-                  <BookOpen className="h-6 w-6 text-red-600" />
+                  <BookOpen className="h-6 w-6 text-blue-600" />
                   <h3 className="text-lg font-semibold text-gray-900">Subject Summary</h3>
                 </div>
                 
@@ -278,11 +311,11 @@ const StudentDashboard = () => {
                 ) : (
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Classes Attended (Present + Late)</span>
+                      <span className="text-sm text-gray-600">Attended (Present + Late)</span>
                       <span className="font-semibold text-gray-900">{stats.presentDays + stats.lateDays} days</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Classes Absent</span>
+                      <span className="text-sm text-gray-600">Absent</span>
                       <span className="font-semibold text-gray-900">{stats.absentDays} days</span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -293,45 +326,6 @@ const StudentDashboard = () => {
                 )}
               </div>
             </div>
-
-            {/* Quick Actions */}
-            {/* <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <button 
-                  onClick={() => setActiveTab('attendance')}
-                  className="p-4 bg-purple-50 rounded-lg text-left hover:bg-purple-100 transition-colors duration-200 group"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-8 w-8 text-purple-600 group-hover:scale-110 transition-transform duration-200" />
-                    <div>
-                      <p className="font-medium text-gray-900">View Calendar</p>
-                      <p className="text-sm text-gray-500">Check daily attendance</p>
-                    </div>
-                  </div>
-                </button>
-
-                <button className="p-4 bg-blue-50 rounded-lg text-left hover:bg-blue-100 transition-colors duration-200 group">
-                  <div className="flex items-center space-x-3">
-                    <TrendingUp className="h-8 w-8 text-blue-600 group-hover:scale-110 transition-transform duration-200" />
-                    <div>
-                      <p className="font-medium text-gray-900">View Trends</p>
-                      <p className="text-sm text-gray-500">Attendance analytics</p>
-                    </div>
-                  </div>
-                </button>
-
-                <button className="p-4 bg-green-50 rounded-lg text-left hover:bg-green-100 transition-colors duration-200 group">
-                  <div className="flex items-center space-x-3">
-                    <Award className="h-8 w-8 text-green-600 group-hover:scale-110 transition-transform duration-200" />
-                    <div>
-                      <p className="font-medium text-gray-900">Achievements</p>
-                      <p className="text-sm text-gray-500">View milestones</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-            </div> */}
           </div>
         )}
 
@@ -343,6 +337,44 @@ const StudentDashboard = () => {
               studentId={user.student_id} 
               subjects={subjects}
             />
+          </div>
+        )}
+
+        {/* --- NEW: Settings Tab (Delete Account) --- */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+             <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <Settings className="h-6 w-6 text-gray-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Account Settings</h3>
+                </div>
+
+                {/* Danger Zone */}
+                <div className="border border-red-200 rounded-lg overflow-hidden">
+                  <div className="bg-red-50 px-6 py-4 border-b border-red-200 flex items-center space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                    <h4 className="text-md font-bold text-red-800">Danger Zone</h4>
+                  </div>
+                  <div className="p-6 bg-white">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <h5 className="text-gray-900 font-medium mb-1">Delete Account</h5>
+                        <p className="text-sm text-gray-500 max-w-xl">
+                          Permanently remove your account and all associated data. This includes your profile information and attendance records. 
+                          <span className="font-bold text-red-600 ml-1">This action cannot be undone.</span>
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleDeleteAccount}
+                        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors flex items-center space-x-2 flex-shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete Account</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+             </div>
           </div>
         )}
       </main>

@@ -286,4 +286,29 @@ router.get('/monthly-attendance', async (req, res) => {
   }
 });
 
+// DELETE student account
+router.delete('/delete-account/:id', async (req, res) => {
+  const { id } = req.params; // This is the student_id
+
+  if (!id) {
+    return res.status(400).json({ message: 'Student ID is required.' });
+  }
+
+  try {
+    // 1. Delete the student
+    // CASCADE will handle attendance_records
+    const result = await db.query('DELETE FROM students WHERE student_id = $1', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: 'Student not found.' });
+    }
+
+    res.status(200).json({ success: true, message: 'Account deleted successfully.' });
+
+  } catch (err) {
+    console.error('Delete Account Error:', err);
+    res.status(500).json({ message: 'Failed to delete account.' });
+  }
+});
+
 module.exports = router;
