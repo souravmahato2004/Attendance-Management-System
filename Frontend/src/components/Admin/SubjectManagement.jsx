@@ -5,7 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 
 const SubjectManagement = () => {
   const [programs, setPrograms] = useState([]);
-  const [semesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]);
+  // REMOVED: const [semesters] = useState([1, 2, 3, 4, 5, 6, 7, 8]); -> We calculate this dynamically now
   const [departments, setDepartments] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [selectedProgram, setSelectedProgram] = useState('');
@@ -28,6 +28,28 @@ const SubjectManagement = () => {
       setCurrentSubjects([]);
     }
   }, [selectedProgram, selectedDepartment, selectedSemester]);
+
+  // --- NEW LOGIC START: Calculate semesters based on program ---
+  const getSemesterOptions = () => {
+    // Find the full program object based on the selected ID
+    // We use String() comparison to be safe against number/string mismatches
+    const program = programs.find(p => String(p.id) === String(selectedProgram));
+    const programName = program?.name?.toLowerCase() || '';
+
+    let limit = 8; // Default for B.Tech or others
+    
+    if (programName.includes('m.tech')) {
+      limit = 4;
+    } else if (programName.includes('phd')) {
+      limit = 2;
+    }
+
+    // Generate array [1, 2, ... limit]
+    return Array.from({ length: limit }, (_, i) => i + 1);
+  };
+
+  const semesterOptions = getSemesterOptions();
+  // --- NEW LOGIC END ---
 
   const loadInitialData = async () => {
     try {
@@ -179,7 +201,7 @@ const SubjectManagement = () => {
             </select>
           </div>
 
-          {/* Semester Dropdown */}
+          {/* Semester Dropdown - UPDATED TO USE DYNAMIC semesterOptions */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
             <select
@@ -189,7 +211,7 @@ const SubjectManagement = () => {
               disabled={!selectedProgram || !selectedDepartment}
             >
               <option value="">Select a semester</option>
-              {semesters.map(semester => (
+              {semesterOptions.map(semester => (
                 <option key={semester} value={semester}>{semester}</option>
               ))}
             </select>
@@ -236,7 +258,7 @@ const SubjectManagement = () => {
             )}
           </div>
 
-          {/* THIS IS THE SECTION YOU ASKED FOR: Add New Subject */}
+          {/* Add New Subject */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Subject</h3>
             
@@ -273,7 +295,7 @@ const SubjectManagement = () => {
               </div>
             )}
 
-            {/* This is the input box and button to add */}
+            {/* Input box and button to add */}
             <div className="flex space-x-3">
               <div className="flex-1">
                 <input

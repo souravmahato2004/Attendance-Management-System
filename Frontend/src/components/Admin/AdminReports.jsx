@@ -6,7 +6,7 @@ import { useToast } from '../../contexts/ToastContext';
 const AdminReports = () => {
   const { success, eror } = useToast(); 
   const [programs, setPrograms] = useState([]);
-  const [semesters, setSemesters] = useState([]);
+  // REMOVED: const [semesters, setSemesters] = useState([]); -> Calculated dynamically now
   const [departments, setDepartments] = useState([]);
   const [years, setYears] = useState([]);
 
@@ -21,19 +21,40 @@ const AdminReports = () => {
     semester: ''
   });
 
+  // --- NEW LOGIC START: Calculate semesters based on program ---
+  const getSemesterOptions = () => {
+    // Find the full program object based on the selected ID
+    const program = programs.find(p => String(p.id) === String(reportData.program));
+    const programName = program?.name?.toLowerCase() || '';
+
+    let limit = 8; // Default for B.Tech or others
+    
+    if (programName.includes('m.tech')) {
+      limit = 4;
+    } else if (programName.includes('phd')) {
+      limit = 2;
+    }
+
+    // Generate array [1, 2, ... limit]
+    return Array.from({ length: limit }, (_, i) => i + 1);
+  };
+
+  const semesterOptions = getSemesterOptions();
+  // --- NEW LOGIC END ---
+
   useEffect(() => {
     const loadDropdownData = async () => {
       try {
         setLoading(true);
-        const [programsData, departmentsData, semestersData] = await Promise.all([
+        // Removed getSemesters() from this call
+        const [programsData, departmentsData] = await Promise.all([
           adminService.getPrograms(),
-          adminService.getDepartments(),
-          adminService.getSemesters()
+          adminService.getDepartments()
         ]);
         
         setPrograms(programsData);
         setDepartments(departmentsData);
-        setSemesters(semestersData);
+        // setSemesters(semestersData); -> Removed
 
         const currentYear = new Date().getFullYear();
         setYears(Array.from({ length: 5 }, (_, i) => currentYear - i));
@@ -127,7 +148,7 @@ const AdminReports = () => {
             </div>
           </div>
 
-          {/* 5. Dynamic Year Selection */}
+          {/* Year Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
             <select
@@ -142,13 +163,17 @@ const AdminReports = () => {
             </select>
           </div>
 
-          {/* 6. Program Selection (uses objects) */}
+          {/* Program Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Program</label>
             <select
               name="program"
-              value={reportData.program} // This is the ID
-              onChange={handleInputChange}
+              value={reportData.program}
+              onChange={(e) => {
+                handleInputChange(e);
+                // Reset semester when program changes to avoid invalid states (e.g., sem 8 in M.Tech)
+                setReportData(prev => ({ ...prev, program: e.target.value, semester: '' }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
               <option value="">Select Program</option>
@@ -158,12 +183,12 @@ const AdminReports = () => {
             </select>
           </div>
 
-          {/* 7. Department Selection (uses objects) */}
+          {/* Department Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
             <select
               name="department"
-              value={reportData.department} // This is the ID
+              value={reportData.department}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
             >
@@ -174,17 +199,18 @@ const AdminReports = () => {
             </select>
           </div>
 
-          {/* 8. Semester Selection (uses numbers) */}
+          {/* Semester Selection - UPDATED TO DYNAMIC */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Semester</label>
             <select
               name="semester"
-              value={reportData.semester} // This is the number
+              value={reportData.semester}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none focus:border-transparent"
+              disabled={!reportData.program} // Disable if no program selected
             >
               <option value="">Select Semester</option>
-              {semesters.map(semester => (
+              {semesterOptions.map(semester => (
                 <option key={semester} value={semester}>{semester}</option>
               ))}
             </select>
@@ -207,7 +233,7 @@ const AdminReports = () => {
         </div>
       </div>
 
-      {/* 9. Report Preview (now updates dynamically) */}
+      {/* Report Preview */}
       {reportData.program && reportData.department && reportData.semester && (
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Preview</h3>
@@ -217,9 +243,8 @@ const AdminReports = () => {
                 <h4 className="font-medium text-gray-900 mb-2">Report Details</h4>
                 <div className="space-y-1 text-sm text-gray-600">
                   <p><span className="font-medium">Period:</span> {monthNames[reportData.month]} {reportData.year}</p>
-                  {/* Find names from state arrays */}
-                  <p><span className="font-medium">Program:</span> {programs.find(p => p.id == reportData.program)?.name || '...'}</p>
-                  <p><span className="font-medium">Department:</span> {departments.find(d => d.id == reportData.department)?.name || '...'}</p>
+                  <p><span className="font-medium">Program:</span> {programs.find(p => String(p.id) === String(reportData.program))?.name || '...'}</p>
+                  <p><span className="font-medium">Department:</span> {departments.find(d => String(d.id) === String(reportData.department))?.name || '...'}</p>
                   <p><span className="font-medium">Semester:</span> {reportData.semester}</p>
                 </div>
               </div>
@@ -236,7 +261,7 @@ const AdminReports = () => {
         </div>
       )}
 
-      {/* 10. Quick Stats (now uses fetched data) */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center space-x-3">
@@ -266,8 +291,9 @@ const AdminReports = () => {
               <BookOpen className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Semesters</p>
-              <p className="text-2xl font-bold text-gray-900">{semesters.length}</p>
+              <p className="text-sm font-medium text-gray-500">Available Semesters</p>
+              {/* Shows current available semesters based on selection */}
+              <p className="text-2xl font-bold text-gray-900">{semesterOptions.length}</p>
             </div>
           </div>
         </div>

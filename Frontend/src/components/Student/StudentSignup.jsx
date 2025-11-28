@@ -17,23 +17,52 @@ const StudentSignup = () => {
     department: '',
     semester: ''
   });
-  const { programs, semesters, departments, subjects } = useApp();
-  const { getprograms, getsemesters, getdepartments, getSubjects } = useApp();
+  
+  // Removed 'semesters' and 'getsemesters' from useApp since we calculate them locally now
+  const { programs, departments, subjects } = useApp();
+  const { getprograms, getdepartments, getSubjects } = useApp();
   const [isLoadingSubjects, setisLoadingSubjects] = useState(false);
 
   useEffect(() => {
     getprograms();
-    getsemesters();
+    // getsemesters(); -> Removed
     getdepartments();
   }, []);
+
+  // --- NEW LOGIC START: Calculate semesters based on program ---
+  const getSemesterOptions = () => {
+    const programName = formData.program?.toLowerCase() || '';
+    
+    let limit = 8; // Default for B.Tech or others
+    
+    if (programName.includes('m.tech')) {
+      limit = 4;
+    } else if (programName.includes('phd')) {
+      limit = 2;
+    }
+
+    // Generate array ["Semester 1", "Semester 2", ... "Semester N"]
+    // We use this format because your existing code uses .split(' ')[1]
+    return Array.from({ length: limit }, (_, i) => `Semester ${i + 1}`);
+  };
+
+  const semesterOptions = getSemesterOptions();
+  // --- NEW LOGIC END ---
 
   useEffect(() => {
     const fetchSubjects = async () => {
       if (formData.program && formData.department && formData.semester) {
-        const semesterNumber = formData.semester.split(' ')[1];
-        setisLoadingSubjects(true);
-        getSubjects(formData.program, formData.department, semesterNumber);
-        setisLoadingSubjects(false);
+        // Safe check before splitting
+        const parts = formData.semester.split(' ');
+        if (parts.length > 1) {
+            const semesterNumber = parts[1];
+            setisLoadingSubjects(true);
+            // Ensure getSubjects is called safely
+            if (getSubjects) {
+                await getSubjects(formData.program, formData.department, semesterNumber);
+            }
+            setisLoadingSubjects(false);
+        }
       }
     };
     fetchSubjects();
@@ -85,7 +114,17 @@ const StudentSignup = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      
+      // Reset semester if program changes to prevent invalid selections (e.g., staying on Sem 8 when switching to M.Tech)
+      if (name === 'program') {
+        newData.semester = '';
+      }
+      
+      return newData;
+    });
     
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
@@ -135,7 +174,7 @@ const StudentSignup = () => {
           <div className="mx-auto h-20 w-20 bg-red-800 rounded-full flex items-center justify-center shadow-lg animate-bounce-in">
             <BookOpen className="h-10 w-10 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Join Student Portal</h2>
+          <h2 className="mt-4 text-3xl font-extrabold text-gray-900">Student Registration Portal</h2>
           <p className="mt-2 text-sm text-gray-600">Create your account to track attendance</p>
         </div>
 
@@ -190,13 +229,23 @@ const StudentSignup = () => {
               {fieldErrors.department && <p className="mt-1 text-xs text-red-600">{fieldErrors.department}</p>}
             </div>
 
+            {/* UPDATED SEMESTER DROPDOWN */}
             <div>
               <label htmlFor="semester" className="sr-only">Semester</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <select id="semester" name="semester" required className={`${baseInputStyles} ${fieldErrors.semester ? errorInputStyles : ''}`} value={formData.semester} onChange={handleChange} onBlur={handleBlur} disabled={loading}>
+                <select 
+                    id="semester" 
+                    name="semester" 
+                    required 
+                    className={`${baseInputStyles} ${fieldErrors.semester ? errorInputStyles : ''}`} 
+                    value={formData.semester} 
+                    onChange={handleChange} 
+                    onBlur={handleBlur} 
+                    disabled={loading || !formData.program} // Disable if no program selected
+                >
                   <option value="">Select Semester</option>
-                  {semesters.map(sem => <option key={sem} value={sem}>{sem}</option>)}
+                  {semesterOptions.map(sem => <option key={sem} value={sem}>{sem}</option>)}
                 </select>
               </div>
               {fieldErrors.semester && <p className="mt-1 text-xs text-red-600">{fieldErrors.semester}</p>}

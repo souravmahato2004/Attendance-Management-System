@@ -353,14 +353,14 @@ const StudentDashboard = () => {
                 <div className="border border-red-200 rounded-lg overflow-hidden">
                   <div className="bg-red-50 px-6 py-4 border-b border-red-200 flex items-center space-x-3">
                     <AlertTriangle className="h-5 w-5 text-red-600" />
-                    <h4 className="text-md font-bold text-red-800">Danger Zone</h4>
+                    <h4 className="text-md font-bold text-red-800">Delete Account</h4>
                   </div>
                   <div className="p-6 bg-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div>
-                        <h5 className="text-gray-900 font-medium mb-1">Delete Account</h5>
+                        <h5 className="text-gray-900 font-medium mb-1">Delete your Account</h5>
                         <p className="text-sm text-gray-500 max-w-xl">
-                          Permanently remove your account and all associated data. This includes your profile information and attendance records. 
+                          This will permanently remove your account and all associated data. This includes your profile information and attendance records. 
                           <span className="font-bold text-red-600 ml-1">This action cannot be undone.</span>
                         </p>
                       </div>
